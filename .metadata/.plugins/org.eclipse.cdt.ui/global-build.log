@@ -1,0 +1,63 @@
+16:55:46 **** Incremental Build of configuration Debug for project stm32f7xx_remote_io ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/ethernet_if.c" -mcpu=cortex-m7 -std=gnu11 -g3 -DHAL_ETH_MODULE_ENABLED -DDEBUG -DUSE_HAL_DRIVER -DSTM32F767xx -DSTM32F7xx -c -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/Compiler/GCC" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/STM32Fxx" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/include" -I../Core/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/ethernet_if.d" -MT"Core/Src/ethernet_if.o" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "Core/Src/ethernet_if.o"
+arm-none-eabi-gcc -o "stm32f7xx_remote_io.elf" @"objects.list"   -mcpu=cortex-m7 -T"C:\Users\chanhayman\OneDrive - Garmin\Documents\_Hayman_files\1_Project\StupidFeederCart\code\general_purpose_remote_io\stm32f7xx_remote_io\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32f7xx_remote_io.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: stm32f7xx_remote_io.elf
+ 
+arm-none-eabi-size  stm32f7xx_remote_io.elf 
+arm-none-eabi-objdump -h -S stm32f7xx_remote_io.elf  > "stm32f7xx_remote_io.list"
+   text	   data	    bss	    dec	    hex	filename
+ 104472	  38796	  56936	 200204	  30e0c	stm32f7xx_remote_io.elf
+Finished building: default.size.stdout
+ 
+Finished building: stm32f7xx_remote_io.list
+ 
+16:57:41 **** Incremental Build of configuration Debug for project stm32f7xx_remote_io ****
+make -j8 all 
+arm-none-eabi-size  stm32f7xx_remote_io.elf 
+   text	   data	    bss	    dec	    hex	filename
+ 104472	  38796	  56936	 200204	  30e0c	stm32f7xx_remote_io.elf
+Finished building: default.size.stdout
+ 
+17:00:48 **** Incremental Build of configuration Debug for project stm32f7xx_remote_io ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m7 -std=gnu11 -g3 -DHAL_ETH_MODULE_ENABLED -DDEBUG -DUSE_HAL_DRIVER -DSTM32F767xx -DSTM32F7xx -c -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/Compiler/GCC" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/STM32Fxx" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/include" -I../Core/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "stm32f7xx_remote_io.elf" @"objects.list"   -mcpu=cortex-m7 -T"C:\Users\chanhayman\OneDrive - Garmin\Documents\_Hayman_files\1_Project\StupidFeederCart\code\general_purpose_remote_io\stm32f7xx_remote_io\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32f7xx_remote_io.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: stm32f7xx_remote_io.elf
+ 
+arm-none-eabi-size  stm32f7xx_remote_io.elf 
+arm-none-eabi-objdump -h -S stm32f7xx_remote_io.elf  > "stm32f7xx_remote_io.list"
+   text	   data	    bss	    dec	    hex	filename
+ 106960	  38800	  58672	 204432	  31e90	stm32f7xx_remote_io.elf
+Finished building: default.size.stdout
+ 
+Finished building: stm32f7xx_remote_io.list
+ 
+17:02:57 **** Incremental Build of configuration Debug for project stm32f7xx_remote_io ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/ethernet_if.c" -mcpu=cortex-m7 -std=gnu11 -g3 -DHAL_ETH_MODULE_ENABLED -DDEBUG -DUSE_HAL_DRIVER -DSTM32F767xx -DSTM32F7xx -c -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/Compiler/GCC" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/STM32Fxx" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/include" -I../Core/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/ethernet_if.d" -MT"Core/Src/ethernet_if.o" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "Core/Src/ethernet_if.o"
+arm-none-eabi-gcc -o "stm32f7xx_remote_io.elf" @"objects.list"   -mcpu=cortex-m7 -T"C:\Users\chanhayman\OneDrive - Garmin\Documents\_Hayman_files\1_Project\StupidFeederCart\code\general_purpose_remote_io\stm32f7xx_remote_io\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32f7xx_remote_io.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: stm32f7xx_remote_io.elf
+ 
+arm-none-eabi-size  stm32f7xx_remote_io.elf 
+arm-none-eabi-objdump -h -S stm32f7xx_remote_io.elf  > "stm32f7xx_remote_io.list"
+   text	   data	    bss	    dec	    hex	filename
+ 106960	  38800	  58672	 204432	  31e90	stm32f7xx_remote_io.elf
+Finished building: default.size.stdout
+ 
+Finished building: stm32f7xx_remote_io.list
+ 
+17:03:58 **** Incremental Build of configuration Debug for project stm32f7xx_remote_io ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/ethernet_if.c" -mcpu=cortex-m7 -std=gnu11 -g3 -DHAL_ETH_MODULE_ENABLED -DDEBUG -DUSE_HAL_DRIVER -DSTM32F767xx -DSTM32F7xx -c -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/include" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/Compiler/GCC" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/STM32Fxx" -I"C:/Users/chanhayman/OneDrive - Garmin/Documents/_Hayman_files/1_Project/StupidFeederCart/code/general_purpose_remote_io/stm32f7xx_remote_io/ThirdParty/FreeRTOS-Plus-TCP/source/portable/NetworkInterface/include" -I../Core/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/ethernet_if.d" -MT"Core/Src/ethernet_if.o" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "Core/Src/ethernet_if.o"
+arm-none-eabi-gcc -o "stm32f7xx_remote_io.elf" @"objects.list"   -mcpu=cortex-m7 -T"C:\Users\chanhayman\OneDrive - Garmin\Documents\_Hayman_files\1_Project\StupidFeederCart\code\general_purpose_remote_io\stm32f7xx_remote_io\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32f7xx_remote_io.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: stm32f7xx_remote_io.elf
+ 
+arm-none-eabi-size  stm32f7xx_remote_io.elf 
+arm-none-eabi-objdump -h -S stm32f7xx_remote_io.elf  > "stm32f7xx_remote_io.list"
+   text	   data	    bss	    dec	    hex	filename
+ 106960	  38800	  58672	 204432	  31e90	stm32f7xx_remote_io.elf
+Finished building: default.size.stdout
+ 
+Finished building: stm32f7xx_remote_io.list
+ 

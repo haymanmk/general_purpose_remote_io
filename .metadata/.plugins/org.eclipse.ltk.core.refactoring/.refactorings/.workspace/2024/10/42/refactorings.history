@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Delete resource &apos;stm32_ws28xx_pwm&apos;" deleteContents="false" description="Delete resource &apos;stm32_ws28xx_pwm&apos;" element1="/stm32_ws28xx_pwm" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1729069243493"/>
+</session>

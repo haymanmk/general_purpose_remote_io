@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.ejs": "html",
+    "stm32f7xx_remote_io.h": "c",
+    "api.h": "c"
+  }
+}
