@@ -5,5 +5,6 @@
 #define false 0
 
 /* Function prototypes */
+uint8_t utils_read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 #endif

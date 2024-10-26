@@ -1,7 +1,5 @@
 #include "stm32f7xx_remote_io.h"
 
-#define MAX_INT_DIGITS 8
-
 // Extracts a floating point value from a string. The following code is based loosely on
 // the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
 // available conversion method examples, but has been highly optimized for Grbl. For known

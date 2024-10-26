@@ -1,8 +1,12 @@
 #ifndef __STM32F7XX_REMOTE_IO_H
 #define __STM32F7XX_REMOTE_IO_H
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 #include "main.h"
 #include "FreeRTOS.h"

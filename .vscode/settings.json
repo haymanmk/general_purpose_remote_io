@@ -2,6 +2,10 @@
   "files.associations": {
     "*.ejs": "html",
     "stm32f7xx_remote_io.h": "c",
-    "api.h": "c"
+    "api.h": "c",
+    "stdint.h": "c",
+    "main.h": "c",
+    "stdlib.h": "c",
+    "_stdlib.h": "c"
   }
 }
