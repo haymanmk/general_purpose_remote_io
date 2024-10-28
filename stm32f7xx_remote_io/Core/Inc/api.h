@@ -9,11 +9,6 @@
 #define API_TX_BUFFER_SIZE 128 // 1 ~ 254
 #define API_ERROR_BUFFER_SIZE API_TX_BUFFER_SIZE // 1 ~ 254
 
-// Parsing step
-#define COMMND_LINE_TYPE 0
-#define COMMND_LINE_ID 1
-#define COMMND_LINE_PARAM 2
-
 // Service ID
 #define SERVICE_ID_STATUS 1
 #define SERVICE_ID_INPUT 2
@@ -81,7 +76,7 @@ enum {
 #define API_WAIT_UNTIL_BUFFER_NOT_EMPTY() \
     do { \
         while (api_is_rx_buffer_empty() == STATUS_OK) { \
-            ulTaskNotifyTake(pdFALSE, portMAX_DELAY); \
+            ulTaskNotifyTake(pdTRUE, portMAX_DELAY); \
         } \
     } while (0)
 
@@ -117,6 +112,7 @@ io_status_t api_is_rx_buffer_empty();
 io_status_t api_is_rx_buffer_full();
 io_status_t api_increment_tx_buffer_head();
 io_status_t api_increment_tx_buffer_tail();
+char api_pop_tx_buffer();
 io_status_t api_is_tx_buffer_empty();
 io_status_t api_is_tx_buffer_full();
 

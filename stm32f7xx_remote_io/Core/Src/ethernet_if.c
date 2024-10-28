@@ -17,6 +17,7 @@ uint8_t socketShutdownTimeout = 0;
 TaskHandle_t createServerSocketTaskHandle;
 TaskHandle_t processRxTaskHandle;
 TaskHandle_t processTxTaskHandle;
+extern TaskHandle_t apiTaskHandle;
 static SemaphoreHandle_t connectionCreatedSemaphoreHandle;
 SemaphoreHandle_t deleteTaskSemaphoreHandle;
 static uint16_t listeningPort = 0;
@@ -428,7 +429,9 @@ static void prvProcessRxTask(void *pvParameters)
         if (lBytesReceived > 0)
         {
             /* Data was received, process it here. */
-            api_append_data(cRxedData, lBytesReceived);
+            api_append_to_rx_ring_buffer(cRxedData, lBytesReceived);
+            // give notification to the api task
+            xTaskNotifyGive(apiTaskHandle);
         }
         else if (lBytesReceived == 0)
         {
@@ -480,8 +483,7 @@ static void prvProcessTxTask(void *pvParameters)
          * - check if ethernet is ready to send data
          * - concatenate the data to be sent until a newline character, '\n', is received
          */
-        // uint8_t chr = serial_tx_irq();
-        uint8_t chr = '\0';
+        uint8_t chr = api_pop_tx_buffer();
 
         // concatenate the data to be sent until a newline character, '\n', is received
         str[strIndex] = chr;
