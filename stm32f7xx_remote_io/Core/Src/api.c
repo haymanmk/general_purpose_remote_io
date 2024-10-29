@@ -4,9 +4,9 @@
 void api_task(void *parameters);
 token_t* api_create_token();
 void api_free_tokens(token_t* token);
+void api_reset_command_line();
 io_status_t api_process_data();
 void api_execute_command();
-io_status_t api_printf(const char *format_string, ...);
 void api_error(uint16_t error_code);
 
 // API task handle
@@ -14,24 +14,28 @@ TaskHandle_t apiTaskHandle;
 extern TaskHandle_t processTxTaskHandle;
 
 // ring buffer for received data
-char rxBuffer[API_RX_BUFFER_SIZE];
-uint8_t rxBufferHead = 0;
-uint8_t rxBufferTail = 0;
+static char rxBuffer[API_RX_BUFFER_SIZE];
+static uint8_t rxBufferHead = 0;
+static uint8_t rxBufferTail = 0;
 
 // ring buffer for sending data
-char txBuffer[API_TX_BUFFER_SIZE];
-uint8_t txBufferHead = 0;
-uint8_t txBufferTail = 0;
+static char txBuffer[API_TX_BUFFER_SIZE];
+static uint8_t txBufferHead = 0;
+static uint8_t txBufferTail = 0;
 
 static command_line_t commandLine = {0}; // store command line data
 static char paramBuffer[MAX_INT_DIGITS+2] = {'\0'}; // store data for ANY type
 token_t* lastToken = NULL;               // store the last token
 
+SemaphoreHandle_t apiAppendTxSemaphoreHandle = NULL;
+
 // initialize API task
 void api_init()
 {
+    // create semacphore for appending data to tx buffer
+    apiAppendTxSemaphoreHandle = xSemaphoreCreateBinary();
     // initialize api task
-    xTaskCreate(api_task, "API Task", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY, &apiTaskHandle);
+    xTaskCreate(api_task, "API Task", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY+1, &apiTaskHandle);
 }
 
 void api_task(void *parameters)
@@ -93,9 +97,60 @@ io_status_t api_append_to_rx_ring_buffer(char *data, BaseType_t len)
     return STATUS_OK;
 }
 
-// Append data to buffer until terminator is met
-io_status_t api_append_to_tx_ring_buffer(char *data, char terminator)
+// Append data to tx buffer with specified length
+io_status_t api_append_to_tx_ring_buffer(char *data, BaseType_t len)
 {
+    // check if semaphore is created
+    if (apiAppendTxSemaphoreHandle == NULL)
+    {
+        return STATUS_FAIL;
+    }
+
+    // take semaphore
+    if (xSemaphoreTake(apiAppendTxSemaphoreHandle, portMAX_DELAY) != pdTRUE)
+    {
+        return STATUS_FAIL;
+    }
+
+    // append data to buffer
+    for (uint8_t i = 0; i < len; i++)
+    {
+        // check if buffer is full
+        if (api_is_tx_buffer_full() == STATUS_OK)
+        {
+            // give semaphore
+            xSemaphoreGive(apiAppendTxSemaphoreHandle);
+            return STATUS_FAIL;
+        }
+
+        // append data to buffer
+        txBuffer[txBufferHead] = data[i];
+        api_increment_tx_buffer_head();
+
+        // notify tx task that there are new data to be sent
+        xTaskNotifyGive(processTxTaskHandle);
+    }
+
+    // give semaphore
+    xSemaphoreGive(apiAppendTxSemaphoreHandle);
+    return STATUS_OK;
+}
+
+// Append data to buffer until terminator is met
+io_status_t api_append_to_tx_ring_buffer_until_term(char *data, char terminator)
+{
+    // check if semaphore is created
+    if (apiAppendTxSemaphoreHandle == NULL)
+    {
+        return STATUS_FAIL;
+    }
+
+    // take semaphore
+    if (xSemaphoreTake(apiAppendTxSemaphoreHandle, portMAX_DELAY) != pdTRUE)
+    {
+        return STATUS_FAIL;
+    }
+
     // append data to buffer
     uint8_t i = 0;
     char chr = data[i];
@@ -103,7 +158,11 @@ io_status_t api_append_to_tx_ring_buffer(char *data, char terminator)
     {
         // check if buffer is full
         if (api_is_tx_buffer_full() == STATUS_OK)
+        {
+            // give semaphore
+            xSemaphoreGive(apiAppendTxSemaphoreHandle);
             return STATUS_FAIL;
+        }
 
         // append data to buffer
         txBuffer[txBufferHead] = chr;
@@ -113,19 +172,22 @@ io_status_t api_append_to_tx_ring_buffer(char *data, char terminator)
         xTaskNotifyGive(processTxTaskHandle);
     }
 
+    // give semaphore
+    xSemaphoreGive(apiAppendTxSemaphoreHandle);
+
     return STATUS_OK;
 }
 
 // increment rx buffer head
 io_status_t api_increment_rx_buffer_head()
 {
-    API_INCREMENT_BUFFER_HEAD(rxBufferHead, rxBufferTail, API_RX_BUFFER_SIZE);
+    UTILS_INCREMENT_BUFFER_HEAD(rxBufferHead, rxBufferTail, API_RX_BUFFER_SIZE);
 }
 
 // increment rx buffer tail
 io_status_t api_increment_rx_buffer_tail()
 {
-    API_INCREMENT_BUFFER_TAIL(rxBufferTail, rxBufferHead, API_RX_BUFFER_SIZE);
+    UTILS_INCREMENT_BUFFER_TAIL(rxBufferTail, rxBufferHead, API_RX_BUFFER_SIZE);
 }
 
 // increment rx buffer tail or wait for new data
@@ -156,13 +218,13 @@ io_status_t api_is_rx_buffer_full()
 // increment tx buffer head
 io_status_t api_increment_tx_buffer_head()
 {
-    API_INCREMENT_BUFFER_HEAD(txBufferHead, txBufferTail, API_TX_BUFFER_SIZE);
+    UTILS_INCREMENT_BUFFER_HEAD(txBufferHead, txBufferTail, API_TX_BUFFER_SIZE);
 }
 
 // increment tx buffer tail
 io_status_t api_increment_tx_buffer_tail()
 {
-    API_INCREMENT_BUFFER_TAIL(txBufferTail, txBufferHead, API_TX_BUFFER_SIZE);
+    UTILS_INCREMENT_BUFFER_TAIL(txBufferTail, txBufferHead, API_TX_BUFFER_SIZE);
 }
 
 // check if tx buffer is empty
@@ -220,6 +282,13 @@ void api_free_tokens(token_t* token)
         free(token);
         token = next;
     }
+}
+
+// reset command line
+void api_reset_command_line()
+{
+    memset(&commandLine, 0, sizeof(command_line_t));
+    lastToken = NULL;
 }
 
 // parse received data
@@ -514,46 +583,73 @@ io_status_t api_process_data()
 // execute the command
 void api_execute_command()
 {
-    // execute the command
+    uint16_t error_code = 0;
 
-    // debug print the command
-    vLoggingPrintf("Command: %c.%d \r\n", commandLine.type, commandLine.id);
-    api_printf("%c%d", commandLine.type, commandLine.id);
-    if (commandLine.variant > 0)
+    // execute the command
+    switch (commandLine.id)
     {
-        vLoggingPrintf("Variant: %d \r\n", commandLine.variant);
-        api_printf(".%d", commandLine.variant);
-    }
-    // print the parameters
-    token_t* token = commandLine.token;
-    while (token != NULL)
-    {
-        if (token->type == TOKEN_TYPE_LENGTH)
+    case SERVICE_ID_SERIAL:
+        // execute serial command
+        if (commandLine.type == 'W')
         {
-            vLoggingPrintf("Length: %d \r\n", token->u32);
+            uart_printf(CHANNEL_1, "%s", (char*)commandLine.token->any);
         }
         else
         {
-            if (token->value_type == PARAM_TYPE_UINT32)
-            {
-                vLoggingPrintf("Param: %d \r\n", token->u32);
-            }
-            else if (token->value_type == PARAM_TYPE_FLOAT)
-            {
-                vLoggingPrintf("Param: %f \r\n", token->f);
-            }
-            else // PARAM_TYPE_ANY
-            {
-                vLoggingPrintf("Param: %s \r\n", (char*)token->any);
-                // clear the buffer
-                memset(paramBuffer, '\0', sizeof(paramBuffer));
-            }
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
         }
-        token = token->next;
+        break;
+    default:
+        // debug print the command
+        vLoggingPrintf("Command: %c.%d \r\n", commandLine.type, commandLine.id);
+        api_printf("%c%d", commandLine.type, commandLine.id);
+        if (commandLine.variant > 0)
+        {
+            vLoggingPrintf("Variant: %d \r\n", commandLine.variant);
+            api_printf(".%d", commandLine.variant);
+        }
+        // print the parameters
+        token_t* token = commandLine.token;
+        while (token != NULL)
+        {
+            if (token->type == TOKEN_TYPE_LENGTH)
+            {
+                vLoggingPrintf("Length: %d \r\n", token->u32);
+            }
+            else
+            {
+                if (token->value_type == PARAM_TYPE_UINT32)
+                {
+                    vLoggingPrintf("Param: %d \r\n", token->u32);
+                }
+                else if (token->value_type == PARAM_TYPE_FLOAT)
+                {
+                    vLoggingPrintf("Param: %f \r\n", token->f);
+                }
+                else // PARAM_TYPE_ANY
+                {
+                    vLoggingPrintf("Param: %s \r\n", (char*)token->any);
+                    // clear the buffer
+                    memset(paramBuffer, '\0', sizeof(paramBuffer));
+                }
+            }
+            token = token->next;
+        }
+
+        // aknowledge the request with 'OK'
+        api_printf(" OK\r\n");
+        break;
     }
 
-    // aknowledge the request with 'OK'
-    api_printf(" OK\r\n");
+    // check if there is an error
+    if (error_code != 0)
+    {
+        api_error(error_code);
+        // free linked list of tokens
+        api_free_tokens(commandLine.token);
+        // clear the command line
+        api_reset_command_line();
+    }
 }
 
 io_status_t api_printf(const char *format_string, ...)
@@ -565,7 +661,7 @@ io_status_t api_printf(const char *format_string, ...)
     va_end(args);
 
     // append data to tx ring buffer
-    if (api_append_to_tx_ring_buffer(buffer, '\0') != STATUS_OK)
+    if (api_append_to_tx_ring_buffer_until_term(buffer, '\0') != STATUS_OK)
     {
         // error handling
         vLoggingPrintf("Error: API TX buffer is full\n");

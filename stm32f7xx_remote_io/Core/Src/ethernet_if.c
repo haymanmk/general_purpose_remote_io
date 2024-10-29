@@ -15,7 +15,7 @@ NetworkInterface_t xInterfaces[1];
 struct xNetworkEndPoint xEndPoints[1];
 uint8_t socketShutdownTimeout = 0;
 TaskHandle_t createServerSocketTaskHandle;
-TaskHandle_t processRxTaskHandle;
+static TaskHandle_t processRxTaskHandle;
 TaskHandle_t processTxTaskHandle;
 extern TaskHandle_t apiTaskHandle;
 static SemaphoreHandle_t connectionCreatedSemaphoreHandle;
@@ -278,7 +278,7 @@ static void prvCreateTCPServerSocketTasks(void *pvParameters)
                         "ProcessRxTask",
                         usUsedStackSize,
                         (void *)xConnectedSocket,
-                        tskIDLE_PRIORITY + 1,
+                        tskIDLE_PRIORITY,
                         &processRxTaskHandle);
 
             // Create the serial task which is an interface between the serial port and the ethernet
@@ -286,7 +286,7 @@ static void prvCreateTCPServerSocketTasks(void *pvParameters)
                         "SerialTask",
                         configMINIMAL_STACK_SIZE * 2,
                         (void *)xConnectedSocket,
-                        tskIDLE_PRIORITY + 1,
+                        tskIDLE_PRIORITY,
                         &processTxTaskHandle);
 
             // wait here until the connection is closed
