@@ -31,7 +31,7 @@ void uart_init()
         Error_Handler();
     }
     // start rx task
-    xTaskCreate(uart_process_rx_task, "UART RX Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, &processRxTaskHandle);
+    xTaskCreate(uart_process_rx_task, "UART RX Task", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY+1, &processRxTaskHandle);
 }
 
 // In order to make UART parameters become adjustable for users,
@@ -69,12 +69,12 @@ void uart_process_rx_task(void *parameters)
         {
             if (api_append_to_tx_ring_buffer(&rxBuffer[rxBufferTail], 1) != STATUS_OK)
             {
-                Error_Handler();
+                vLoggingPrintf("Failed to append to tx buffer\n");
             }
 
             if (uart_increment_rx_buffer_tail() != STATUS_OK)
             {
-                Error_Handler();
+                vLoggingPrintf("Failed to increment rx buffer tail\n");
             }
         }
     }
@@ -125,21 +125,27 @@ io_status_t uart_printf(uint8_t ch, const char *format_string, ...)
 // UART receive interrupt callback
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  if (huart->Instance == huart_1->Instance)
-  {
-    char chr = rxBuffer[rxBufferHead];
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    if (chr == '\n')
+    if (huart->Instance == huart_1->Instance)
     {
-        // give notification to the UART task
-        xTaskNotifyGive(processRxTaskHandle);
-    }
+        char chr = rxBuffer[rxBufferHead];
 
-    if (uart_increment_rx_buffer_head() != STATUS_OK)
-    {
-        Error_Handler();
-    }
+        if (chr == '\n')
+        {
+            // give notification to the UART task
+            vTaskNotifyGiveFromISR(processRxTaskHandle, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
 
-    HAL_UART_Receive_IT(huart, (uint8_t*)(rxBuffer+rxBufferHead), 1);
-  }
+        if (uart_increment_rx_buffer_head() != STATUS_OK)
+        {
+            Error_Handler();
+        }
+
+        if (HAL_UART_Receive_IT(huart_1, (uint8_t*)(rxBuffer+rxBufferHead), 1) != HAL_OK)
+        {
+            Error_Handler();
+        }
+    }
 }

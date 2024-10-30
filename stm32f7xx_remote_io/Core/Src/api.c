@@ -24,7 +24,7 @@ static uint8_t txBufferHead = 0;
 static uint8_t txBufferTail = 0;
 
 static command_line_t commandLine = {0}; // store command line data
-static char paramBuffer[MAX_INT_DIGITS+2] = {'\0'}; // store data for ANY type
+static char paramBuffer[UART_TX_BUFFER_SIZE] = {'\0'}; // store data for ANY type
 token_t* lastToken = NULL;               // store the last token
 
 SemaphoreHandle_t apiAppendTxSemaphoreHandle = NULL;
@@ -34,6 +34,10 @@ void api_init()
 {
     // create semacphore for appending data to tx buffer
     apiAppendTxSemaphoreHandle = xSemaphoreCreateBinary();
+
+    // give semaphore
+    xSemaphoreGive(apiAppendTxSemaphoreHandle);
+
     // initialize api task
     xTaskCreate(api_task, "API Task", configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY+1, &apiTaskHandle);
 }
@@ -100,6 +104,11 @@ io_status_t api_append_to_rx_ring_buffer(char *data, BaseType_t len)
 // Append data to tx buffer with specified length
 io_status_t api_append_to_tx_ring_buffer(char *data, BaseType_t len)
 {
+    if (processTxTaskHandle == NULL)
+    {
+        return STATUS_FAIL;
+    }
+
     // check if semaphore is created
     if (apiAppendTxSemaphoreHandle == NULL)
     {
@@ -139,6 +148,11 @@ io_status_t api_append_to_tx_ring_buffer(char *data, BaseType_t len)
 // Append data to buffer until terminator is met
 io_status_t api_append_to_tx_ring_buffer_until_term(char *data, char terminator)
 {
+    if (processTxTaskHandle == NULL)
+    {
+        return STATUS_FAIL;
+    }
+
     // check if semaphore is created
     if (apiAppendTxSemaphoreHandle == NULL)
     {
@@ -592,7 +606,28 @@ void api_execute_command()
         // execute serial command
         if (commandLine.type == 'W')
         {
-            uart_printf(CHANNEL_1, "%s", (char*)commandLine.token->any);
+            // search for the message token and ingore the length token
+            token_t* token = commandLine.token;
+            while (token != NULL)
+            {
+                if (token->value_type == PARAM_TYPE_ANY)
+                {
+                    break;
+                }
+                token = token->next;
+            }
+            // check if the token is found
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            }
+            else
+            {
+                // send the message to the serial port
+                uart_printf(CHANNEL_1, "%s", (char*)token->any);
+                //clear param buffer
+                memset(paramBuffer, '\0', sizeof(paramBuffer));
+            }
         }
         else
         {
@@ -645,11 +680,11 @@ void api_execute_command()
     if (error_code != 0)
     {
         api_error(error_code);
-        // free linked list of tokens
-        api_free_tokens(commandLine.token);
-        // clear the command line
-        api_reset_command_line();
     }
+    // free linked list of tokens
+    api_free_tokens(commandLine.token);
+    // clear the command line
+    api_reset_command_line();
 }
 
 io_status_t api_printf(const char *format_string, ...)
@@ -664,7 +699,7 @@ io_status_t api_printf(const char *format_string, ...)
     if (api_append_to_tx_ring_buffer_until_term(buffer, '\0') != STATUS_OK)
     {
         // error handling
-        vLoggingPrintf("Error: API TX buffer is full\n");
+        vLoggingPrintf("Error: Append to TX buffer failed\n");
     }
 
     return STATUS_OK;
