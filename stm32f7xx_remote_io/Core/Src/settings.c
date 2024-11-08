@@ -23,10 +23,10 @@ const settings_t defaults = {
     .mac_address_5 = 0x03,
     .tcp_port = 0, // this value will be added to 8500 as the final tcp port, i.e. 8500 + tcp_port
     .uart_1 = {
-        .baudrate = 9600,
+        .baudrate = 115200,
         .data_bits = UART_WORDLENGTH_8B,
         .stop_bits = UART_STOPBITS_1,
-        .parity = UART_PARITY_NONE,
+        .parity = UART_PARITY_EVEN,
         .flow_control = 0,
     },
     .pwmws288xx_1 = {

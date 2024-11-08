@@ -14,10 +14,11 @@
 #define SERVICE_ID_INPUT 2
 #define SERVICE_ID_OUTPUT 3
 #define SERVICE_ID_SUBSCRIBE_INPUT 4
-#define SERVICE_ID_SERIAL 5
-#define SERVICE_ID_PWM_WS28XX_LED 6
-#define SERIVCE_ID_ANALOG_INPUT 7
-#define SERVICE_ID_ANALOG_OUTPUT 8
+#define SERVICE_ID_UNSUBSCRIBE_INPUT 5
+#define SERVICE_ID_SERIAL 6
+#define SERVICE_ID_PWM_WS28XX_LED 7
+#define SERIVCE_ID_ANALOG_INPUT 8
+#define SERVICE_ID_ANALOG_OUTPUT 9
 
 // Setting ID
 #define SETTING_ID_IP_ADDRESS 101
@@ -58,6 +59,13 @@ enum {
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY); \
         } \
     } while (0)
+
+// default response to client
+#define API_DEFAULT_RESPONSE() \
+    do { \
+        api_printf("%c%d OK\r\n", commandLine.type, commandLine.id); \
+    } while (0)
+
 
 /* Type definition */
 typedef struct Token {

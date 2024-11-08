@@ -28,6 +28,7 @@ enum Channel {
 #include "ethernet_if.h"
 #include "api.h"
 #include "uart.h"
+#include "digital_input.h"
 
 
 /* Exported functions */

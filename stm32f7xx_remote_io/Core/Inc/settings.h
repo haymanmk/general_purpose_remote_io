@@ -33,10 +33,10 @@ typedef struct EthernetSettings
 typedef struct UARTSettings
 {
     uint32_t baudrate;
-    uint8_t data_bits;
-    uint8_t stop_bits;
-    uint8_t parity;
-    uint8_t flow_control; // under development
+    uint32_t data_bits;
+    uint32_t stop_bits;
+    uint32_t parity;
+    uint32_t flow_control; // under development
 } uart_settings_t;
 
 typedef struct PWMWS288XX_Settings

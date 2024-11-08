@@ -269,7 +269,7 @@ char api_pop_tx_buffer()
 token_t* api_create_token()
 {
     // create token
-    token_t* token = (token_t*)malloc(sizeof(token_t));
+    token_t* token = (token_t*)pvPortMalloc(sizeof(token_t));
     if (token == NULL)
     {
         api_error(API_ERROR_CODE_FAIL_ALLOCATE_MEMORY_FOR_TOKEN);
@@ -293,7 +293,7 @@ void api_free_tokens(token_t* token)
     {
         next = token->next;
         token->next = NULL;
-        free(token);
+        vPortFree(token);
         token = next;
     }
 }
@@ -634,6 +634,104 @@ void api_execute_command()
             error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
         }
         break;
+    case SERVICE_ID_INPUT:
+        // execute input command
+        if (commandLine.type == 'R')
+        {
+            // check if parameter is valid
+            if (commandLine.token == NULL ||
+            commandLine.token->value_type != PARAM_TYPE_UINT32 ||
+            commandLine.token->u32 == 0 ||
+            commandLine.token->u32 >= DIGITAL_INPUT_MAX)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+            // read the state of the digital input
+            bool state = digital_input_read(commandLine.token->u32);
+            // send the state to the client, format: "R<Service ID> <Input Index> <State>"
+            api_printf("R%d %d %d\r\n", SERVICE_ID_INPUT, commandLine.token->u32, state);
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SERVICE_ID_SUBSCRIBE_INPUT:
+        // execute subscribe input command
+        // check if token is valid
+        if (commandLine.token == NULL)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        if (commandLine.type == 'W')
+        {
+            token_t* token = commandLine.token;
+            while (token != NULL)
+            {
+                // check if parameter is valid
+                if (token->value_type != PARAM_TYPE_UINT32 ||
+                token->u32 == 0 ||
+                token->u32 >= DIGITAL_INPUT_MAX)
+                {
+                    error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                    break;
+                }
+                // subscribe to the digital input
+                digital_input_subscribe(token->u32);
+                token = token->next;
+            }
+            API_DEFAULT_RESPONSE();
+        }
+        else if (commandLine.type == 'R')
+        {
+            // print header
+            api_printf("R%d ", SERVICE_ID_SUBSCRIBE_INPUT);
+            // print current subscribed digital inputs
+            digital_input_print_subscribed_inputs();
+            // print new line
+            api_printf("\r\n");
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SERVICE_ID_UNSUBSCRIBE_INPUT:
+        // execute unsubscribe input command
+        // check if token is valid
+        if (commandLine.token == NULL)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        if (commandLine.type == 'W')
+        {
+            token_t* token = commandLine.token;
+            while (token != NULL)
+            {
+                // check if parameter is valid
+                if (token->value_type != PARAM_TYPE_UINT32 ||
+                token->u32 == 0 ||
+                token->u32 >= DIGITAL_INPUT_MAX)
+                {
+                    error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                    break;
+                }
+                // unsubscribe to the digital input
+                digital_input_unsubscribe(token->u32);
+                token = token->next;
+            }
+            API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
     default:
         // debug print the command
         vLoggingPrintf("Command: %c.%d \r\n", commandLine.type, commandLine.id);
@@ -671,8 +769,6 @@ void api_execute_command()
             token = token->next;
         }
 
-        // aknowledge the request with 'OK'
-        api_printf(" OK\r\n");
         break;
     }
 
