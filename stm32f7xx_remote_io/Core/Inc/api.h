@@ -43,27 +43,6 @@ enum {
 };
 
 /* Macros */
-#define API_INCREMENT_BUFFER_HEAD(HEAD, TAIL, SIZE) \
-    do { \
-        /* check if buffer head is allowed to increment */ \
-        uint8_t nextHead = (HEAD+1) % SIZE; \
-        if (nextHead != TAIL) { \
-            HEAD = nextHead; \
-            return STATUS_OK; \
-        } \
-        return STATUS_FAIL; \
-    } while (0)
-
-#define API_INCREMENT_BUFFER_TAIL(TAIL, HEAD, SIZE) \
-    do { \
-        /* check if buffer tail is allowed to increment */ \
-        if (TAIL != HEAD) { \
-            TAIL = (TAIL+1) % SIZE; \
-            return STATUS_OK; \
-        } \
-        return STATUS_FAIL; \
-    } while (0)
-
 // remove all the blank spaces when processing the command
 #define API_REMOVE_BLANK_SPACES() \
     do { \
@@ -104,7 +83,8 @@ typedef struct {
 /* Function prototypes */
 void api_init();
 io_status_t api_append_to_rx_ring_buffer(char *data, BaseType_t len);
-io_status_t api_append_to_tx_ring_buffer(char *data, char terminator);
+io_status_t api_append_to_tx_ring_buffer(char *data, BaseType_t len);
+io_status_t api_append_to_tx_ring_buffer_until_term(char *data, char terminator);
 io_status_t api_increment_rx_buffer_head();
 io_status_t api_increment_rx_buffer_tail();
 void api_increment_rx_buffer_tail_or_wait();
@@ -115,5 +95,6 @@ io_status_t api_increment_tx_buffer_tail();
 char api_pop_tx_buffer();
 io_status_t api_is_tx_buffer_empty();
 io_status_t api_is_tx_buffer_full();
+io_status_t api_printf(const char *format_string, ...);
 
 #endif

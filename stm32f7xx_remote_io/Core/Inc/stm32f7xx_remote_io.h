@@ -7,6 +7,10 @@ typedef enum {
     STATUS_FAIL = 2,
 } io_status_t;
 
+enum Channel {
+    CHANNEL_1 = 1,
+};
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -23,6 +27,7 @@ typedef enum {
 #include "settings.h"
 #include "ethernet_if.h"
 #include "api.h"
+#include "uart.h"
 
 
 /* Exported functions */

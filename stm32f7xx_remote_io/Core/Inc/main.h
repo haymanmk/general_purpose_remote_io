@@ -69,8 +69,8 @@ void Error_Handler(void);
 #define RMII_REF_CLK_GPIO_Port GPIOA
 #define RMII_MDIO_Pin GPIO_PIN_2
 #define RMII_MDIO_GPIO_Port GPIOA
-#define PWM_WS28XX_Pin GPIO_PIN_6
-#define PWM_WS28XX_GPIO_Port GPIOA
+#define PWM_WS28XX_CH1_Pin GPIO_PIN_6
+#define PWM_WS28XX_CH1_GPIO_Port GPIOA
 #define RMII_CRS_DV_Pin GPIO_PIN_7
 #define RMII_CRS_DV_GPIO_Port GPIOA
 #define RMII_RXD0_Pin GPIO_PIN_4
