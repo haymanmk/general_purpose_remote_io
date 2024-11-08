@@ -368,7 +368,7 @@ io_status_t api_process_data()
             // proceed to next parsing step
             break;
         }
-        else if (chr == '\n' || chr == '\r')
+        else if ((chr == '\n' || chr == '\r') && commandLine.id != 0)
         {
             // end of command line
             return STATUS_OK;
@@ -659,15 +659,15 @@ void api_execute_command()
         break;
     case SERVICE_ID_SUBSCRIBE_INPUT:
         // execute subscribe input command
-        // check if token is valid
-        if (commandLine.token == NULL)
-        {
-            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-            break;
-        }
-
         if (commandLine.type == 'W')
         {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
             token_t* token = commandLine.token;
             while (token != NULL)
             {

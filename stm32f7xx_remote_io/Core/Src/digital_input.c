@@ -33,6 +33,8 @@ typedef struct NodeSubscribedInputs
 } node_subscribed_inputs_t;
 
 /* private functions */
+void digital_input_task(void* parameters);
+digital_input_t* digital_input_instance(uint8_t index);
 node_subscribed_inputs_t* digital_input_create_node(uint8_t index);
 void digital_input_delete_node(node_subscribed_inputs_t* node);
 void digital_input_append_node(node_subscribed_inputs_t* node);
@@ -71,25 +73,60 @@ void digital_input_task(void* parameters)
 
         // check the state of the subscribed digital inputs
         node_subscribed_inputs_t* current = headNodeSubscribedInputs;
+        bool state = false;
+        digital_input_t* input = NULL;
+
         while (current != NULL)
         {
             // read the state of the digital input
-            bool state = digital_input_read(current->index);
+            state = digital_input_read(current->index);
+            input = digital_input_instance(current->index);
 
             // check if the state has changed
-            if (state != DIGITAL_INPUT_INSTANCE(current->index).state)
+            if (state != input->state)
             {
                 // update the state
-                DIGITAL_INPUT_INSTANCE(current->index).state = state;
+                input->state = state;
 
                 // Notify clients with the format: "R<Service ID> <Input Index> <State>"
                 api_printf("R%d %d %d\r\n", SERVICE_ID_INPUT, current->index, state);
             }
+            current = current->next;
         }
 
         // delay few milliseconds
         vTaskDelay(pdMS_TO_TICKS(DIGITAL_INPUT_UPDATE_INTERVAL));
     }
+}
+
+digital_input_t* digital_input_instance(uint8_t index)
+{
+    switch (index)
+    {
+        case 1: return &DIGITAL_INPUT_INSTANCE(1);
+        case 2: return &DIGITAL_INPUT_INSTANCE(2);
+        case 3: return &DIGITAL_INPUT_INSTANCE(3);
+        case 4: return &DIGITAL_INPUT_INSTANCE(4);
+        case 5: return &DIGITAL_INPUT_INSTANCE(5);
+        case 6: return &DIGITAL_INPUT_INSTANCE(6);
+        case 7: return &DIGITAL_INPUT_INSTANCE(7);
+        case 8: return &DIGITAL_INPUT_INSTANCE(8);
+        case 9: return &DIGITAL_INPUT_INSTANCE(9);
+        case 10: return &DIGITAL_INPUT_INSTANCE(10);
+        case 11: return &DIGITAL_INPUT_INSTANCE(11);
+        case 12: return &DIGITAL_INPUT_INSTANCE(12);
+        case 13: return &DIGITAL_INPUT_INSTANCE(13);
+        case 14: return &DIGITAL_INPUT_INSTANCE(14);
+        case 15: return &DIGITAL_INPUT_INSTANCE(15);
+        case 16: return &DIGITAL_INPUT_INSTANCE(16);
+    #ifdef DIGITAL_INPUT_17_PIN
+        case 17: return &DIGITAL_INPUT_INSTANCE(17);
+    #endif
+    #ifdef DIGITAL_INPUT_18_PIN
+        case 18: return &DIGITAL_INPUT_INSTANCE(18);
+    #endif
+    }
+    return NULL;
 }
 
 // read the state of a digital input specified by the index

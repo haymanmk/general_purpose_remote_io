@@ -115,6 +115,9 @@ int main(void)
   // Initialize UART
   uart_init();
 
+  // Initialize digital inputs
+  digital_input_init();
+
   // start scheduler
   vTaskStartScheduler();
 
