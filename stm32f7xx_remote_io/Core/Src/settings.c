@@ -3,6 +3,7 @@
 settings_t settings;
 
 const settings_t defaults = {
+    .settings_version = SETTINGS_VERSION,
     .ip_address_0 = 172,
     .ip_address_1 = 16,
     .ip_address_2 = 0,
@@ -34,15 +35,43 @@ const settings_t defaults = {
     },
 };
 
+/* Private functions */
+void settings_restore(uint8_t restore_flag);
+io_status_t settings_save();
+io_status_t settings_load();
+
 void settings_restore(uint8_t restore_flag)
 {
-    if (restore_flag & SETTINGS_RESTORE_DEFAULTS)
-    {
-        settings = defaults;
-    }
+    settings = defaults;
+    settings_save();
 }
 
 void settings_init()
 {
-    settings_restore(SETTINGS_RESTORE_DEFAULTS);
+    // load settings from flash
+    if (settings_load() != STATUS_OK)
+    {
+        // if failed to load settings, restore defaults
+        settings_restore(SETTINGS_RESTORE_DEFAULTS);
+    }
+}
+
+io_status_t settings_save()
+{
+    return flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t *)&settings, sizeof(settings_t));
+}
+
+io_status_t settings_load()
+{
+    if (flash_read_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t *)&settings, sizeof(settings_t)) != STATUS_OK)
+    {
+        return STATUS_ERROR;
+    }
+
+    if (settings.settings_version != SETTINGS_VERSION)
+    {
+        return STATUS_ERROR;
+    }
+
+    return STATUS_OK;
 }

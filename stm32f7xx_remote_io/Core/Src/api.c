@@ -1,5 +1,8 @@
 #include "stm32f7xx_remote_io.h"
 
+#define PARAM_STR_MAX_LENGTH    MAX_INT_DIGITS+2 // 1 for sign, 1 for null terminator
+
+
 // function prototypes
 void api_task(void *parameters);
 token_t* api_create_token();
@@ -26,6 +29,8 @@ static uint8_t txBufferTail = 0;
 static command_line_t commandLine = {0}; // store command line data
 static char paramBuffer[UART_TX_BUFFER_SIZE] = {'\0'}; // store data for ANY type
 token_t* lastToken = NULL;               // store the last token
+
+extern ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS];
 
 SemaphoreHandle_t apiAppendTxSemaphoreHandle = NULL;
 
@@ -72,14 +77,10 @@ void api_task(void *parameters)
             }
         }
 
-        // clear the command line
-        commandLine.type = 0;
-        commandLine.id = 0;
-        commandLine.variant = 0;
         // free linked list of tokens
         api_free_tokens(commandLine.token);
-        commandLine.token = NULL;
-        lastToken = NULL;
+        // clear the command line
+        api_reset_command_line();
     }
 }
 
@@ -171,11 +172,10 @@ io_status_t api_append_to_tx_ring_buffer_until_term(char *data, char terminator)
     for (; chr != terminator; chr = data[++i])
     {
         // check if buffer is full
-        if (api_is_tx_buffer_full() == STATUS_OK)
+        while (api_is_tx_buffer_full() == STATUS_OK)
         {
-            // give semaphore
-            xSemaphoreGive(apiAppendTxSemaphoreHandle);
-            return STATUS_FAIL;
+            // wait until buffer is not full
+            vTaskDelay(1);
         }
 
         // append data to buffer
@@ -309,11 +309,12 @@ void api_reset_command_line()
 io_status_t api_process_data()
 {
     char chr = rxBuffer[rxBufferTail];          // current character
-    char param_str[MAX_INT_DIGITS+2] = {'\0'};
+    char param_str[PARAM_STR_MAX_LENGTH] = {'\0'};
     bool isVariant = false;                     // check if there is a variant for the command
     bool isLengthRequired = false;              // check if length is required for the command
 
-    // [Commnad Type]
+
+    //// [Commnad Type]: lexing the command type //////////////////////////////////
     // check if command type is valid
     switch (chr)
     {
@@ -335,7 +336,8 @@ io_status_t api_process_data()
     // increment rx buffer tail
     api_increment_rx_buffer_tail_or_wait();
 
-    // [ID]
+
+    //// [ID].[Variant]: lexing the command id and variant ////////////////////////
     while (rxBufferHead != rxBufferTail)
     {
         chr = rxBuffer[rxBufferTail];
@@ -383,7 +385,8 @@ io_status_t api_process_data()
         api_increment_rx_buffer_tail_or_wait();
     }
 
-    // [Param]
+
+    //// [Param]: lexing the parameters //////////////////////////////////////////
     token_t* token = api_create_token();
 
     // check if length parameter is required for the command
@@ -394,9 +397,9 @@ io_status_t api_process_data()
         break;
     }
 
-    // check if first character is a digit
+    // check if first character is a digit or a sign
     chr = rxBuffer[rxBufferTail];
-    if (!isdigit(chr))
+    if (!isdigit(chr) && chr != '-')
     {
         api_error(API_ERROR_CODE_INVALID_COMMAND_PARAMETER);
         api_free_tokens(token);
@@ -419,7 +422,7 @@ io_status_t api_process_data()
             token->type = TOKEN_TYPE_PARAM;
         }
 
-        token->value_type = PARAM_TYPE_UINT32;
+        token->value_type = PARAM_TYPE_INT32;
 
         // add token to the linked list
         commandLine.token = token;
@@ -437,9 +440,13 @@ io_status_t api_process_data()
 
         // process data based on the value type of the parameter
         // type of number
-        if (token->value_type == PARAM_TYPE_UINT32)
+        if (token->value_type == PARAM_TYPE_INT32)
         {
-            if (chr >= '0' && chr <= '9')
+            if (chr == '-' && param_index == 0)
+            {
+                param_str[param_index++] = chr;
+            }
+            else if (chr >= '0' && chr <= '9' && param_index < PARAM_STR_MAX_LENGTH)
             {
                 param_str[param_index++] = chr;
             }
@@ -453,14 +460,21 @@ io_status_t api_process_data()
                 // end of parameter
                 isAParam = true;
             }
-            else if (chr == '.' && !isDecimal)
+            else if (chr == '.' && !isDecimal && param_index < PARAM_STR_MAX_LENGTH)
             {
                 param_str[param_index++] = chr;
                 isDecimal = true;
             }
             else
             {
-                api_error(API_ERROR_CODE_INVALID_COMMAND_PARAMETER);
+                if (param_index >= PARAM_STR_MAX_LENGTH)
+                {
+                    api_error(API_ERROR_CODE_TOO_MANNY_DIGITS);
+                }
+                else
+                {
+                    api_error(API_ERROR_CODE_INVALID_COMMAND_PARAMETER);
+                }
                 isError = true;
                 break;
             }
@@ -468,13 +482,13 @@ io_status_t api_process_data()
         // ANY type, push any data into the parameter
         else if (token->value_type == PARAM_TYPE_ANY)
         {
-            if (param_index < lastToken->u32)
+            if (param_index < lastToken->i32)
             {
                 paramBuffer[param_index++] = chr;
             }
             
             // check if it is the end of the parameter based on the length
-            if (param_index >= lastToken->u32)
+            if (param_index >= lastToken->i32)
             {
                 // check if next character is a `\r` or `\n`
                 uint8_t nextTail = (rxBufferTail+1) % API_RX_BUFFER_SIZE;
@@ -509,9 +523,9 @@ io_status_t api_process_data()
                 token->value_type = PARAM_TYPE_FLOAT;
                 token->f = atof(param_str);
             }
-            else if (token->value_type == PARAM_TYPE_UINT32)
+            else if (token->value_type == PARAM_TYPE_INT32)
             {
-                token->u32 = atoi(param_str);
+                token->i32 = atoi(param_str);
             }
             else
             {
@@ -563,15 +577,8 @@ io_status_t api_process_data()
             }
             else
             {
-                token->value_type = PARAM_TYPE_UINT32;
+                token->value_type = PARAM_TYPE_INT32;
             }
-        }
-        // check if the digit has reached the maximum
-        else if ((token->value_type != PARAM_TYPE_ANY) && (param_index >= MAX_INT_DIGITS))
-        {
-            api_error(API_ERROR_CODE_TOO_MANNY_DIGITS);
-            isError = true;
-            break;
         }
         else
         {
@@ -584,12 +591,10 @@ io_status_t api_process_data()
     // free linked list of tokens if there is an error
     if (isError)
     {
-        api_free_tokens(commandLine.token);
         return STATUS_FAIL;
     }
 
     // should not reach here
-    api_free_tokens(commandLine.token);
     api_error(API_ERROR_CODE_INVALID_COMMAND_PARAMETER);
     return STATUS_FAIL;
 }
@@ -602,6 +607,30 @@ void api_execute_command()
     // execute the command
     switch (commandLine.id)
     {
+    case SERVICE_ID_STATUS:
+        // execute status command
+        if (commandLine.type == 'R')
+        {
+            // send default response
+            API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SERVICE_ID_SYSTEM_INFO:
+        // execute system info command
+        if (commandLine.type == 'R')
+        {
+            // print system info
+            system_info_print();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
     case SERVICE_ID_SERIAL:
         // execute serial command
         if (commandLine.type == 'W')
@@ -640,17 +669,29 @@ void api_execute_command()
         {
             // check if parameter is valid
             if (commandLine.token == NULL ||
-            commandLine.token->value_type != PARAM_TYPE_UINT32 ||
-            commandLine.token->u32 == 0 ||
-            commandLine.token->u32 >= DIGITAL_INPUT_MAX)
+                commandLine.token->value_type != PARAM_TYPE_INT32 ||
+                commandLine.token->i32 == 0 ||
+                commandLine.token->i32 >= DIGITAL_INPUT_MAX)
             {
                 error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
                 break;
             }
-            // read the state of the digital input
-            bool state = digital_input_read(commandLine.token->u32);
-            // send the state to the client, format: "R<Service ID> <Input Index> <State>"
-            api_printf("R%d %d %d\r\n", SERVICE_ID_INPUT, commandLine.token->u32, state);
+
+            // if the parameter equals to -1, read all the digital inputs
+            if (commandLine.token->i32 == -1)
+            {
+                // read all the digital inputs
+                uint32_t state = digital_input_read_all();
+                // send the state to the client, format: "R<Service ID> <State>"
+                api_printf("R%d %d\r\n", SERVICE_ID_INPUT, state);
+            }
+            // read the state of specified digital input
+            else
+            {
+                bool state = digital_input_read((uint8_t)(commandLine.token->i32));
+                // send the state to the client, format: "R<Service ID> <Input Index> <State>"
+                api_printf("R%d %d %d\r\n", SERVICE_ID_INPUT, commandLine.token->i32, state);
+            }
         }
         else
         {
@@ -672,15 +713,15 @@ void api_execute_command()
             while (token != NULL)
             {
                 // check if parameter is valid
-                if (token->value_type != PARAM_TYPE_UINT32 ||
-                token->u32 == 0 ||
-                token->u32 >= DIGITAL_INPUT_MAX)
+                if (token->value_type != PARAM_TYPE_INT32 ||
+                token->i32 == 0 ||
+                token->i32 >= DIGITAL_INPUT_MAX)
                 {
                     error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
                     break;
                 }
                 // subscribe to the digital input
-                digital_input_subscribe(token->u32);
+                digital_input_subscribe(token->i32);
                 token = token->next;
             }
             API_DEFAULT_RESPONSE();
@@ -714,15 +755,15 @@ void api_execute_command()
             while (token != NULL)
             {
                 // check if parameter is valid
-                if (token->value_type != PARAM_TYPE_UINT32 ||
-                token->u32 == 0 ||
-                token->u32 >= DIGITAL_INPUT_MAX)
+                if (token->value_type != PARAM_TYPE_INT32 ||
+                token->i32 == 0 ||
+                token->i32 >= DIGITAL_INPUT_MAX)
                 {
                     error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
                     break;
                 }
                 // unsubscribe to the digital input
-                digital_input_unsubscribe(token->u32);
+                digital_input_unsubscribe(token->i32);
                 token = token->next;
             }
             API_DEFAULT_RESPONSE();
@@ -732,7 +773,426 @@ void api_execute_command()
             error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
         }
         break;
+    case SERVICE_ID_OUTPUT:
+    {
+        // check if token is valid
+        if (commandLine.token == NULL)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        token_t* token = commandLine.token;
+
+        // get output index
+        uint16_t output_index = token->i32;
+
+        // check if parameter is valid
+        if (output_index == 0 || output_index >= DIGITAL_OUTPUT_MAX)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        // execute output command
+        if (commandLine.type == 'W')
+        {
+            // get the write value
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+            bool state = (token->i32 > 0) ? true : false;
+            
+            // write to the digital output
+            digital_output_write(output_index, state);
+
+            API_DEFAULT_RESPONSE();
+        }
+        else if (commandLine.type == 'R')
+        {
+            if (output_index == -1)
+            {
+                // read all the digital outputs
+                uint32_t state = digital_output_read_all();
+                // send the state to the client, format: "R<Service ID> <State>"
+                api_printf("R%d %d\r\n", SERVICE_ID_OUTPUT, state);
+            }
+            else
+            {
+                // read the state of specified digital output
+                bool state = digital_output_read((uint8_t)output_index);
+                // send the state to the client, format: "R<Service ID> <Output Index> <State>"
+                api_printf("R%d %d %d\r\n", SERVICE_ID_OUTPUT, output_index, state);
+            }
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    }
+    case SERVICE_ID_PWM_WS28XX_LED:
+    {
+        // check if token is valid
+        if (commandLine.token == NULL)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        token_t* token = commandLine.token;
+
+        // get the LED index
+        uint16_t led_index = token->i32;
+
+        // check if parameter is valid
+        if (led_index >= NUMBER_OF_LEDS)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+            break;
+        }
+
+        // execute WS28XX LED command
+        if (commandLine.type == 'W')
+        {
+            // get the color of the LED
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            // get the color of the LED
+            uint8_t r = (uint8_t)token->i32;
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            uint8_t g = (uint8_t)token->i32;
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            uint8_t b = (uint8_t)token->i32;
+
+            // set the color of the LED
+            ws28xx_pwm_set_color(r, g, b, led_index);
+            // update the LED
+            ws28xx_pwm_update();
+
+            API_DEFAULT_RESPONSE();
+        }
+        else if (commandLine.type == 'R')
+        {
+            // read the color of the LED
+            ws_color_t color = ws28xx_pwm_color[led_index];
+            // send the color to the client, format: "R<Service ID> <LED Index> <R> <G> <B>"
+            api_printf("R%d %d %d %d %d\r\n", SERVICE_ID_PWM_WS28XX_LED, led_index, color.r, color.g, color.b);
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    }
+    case SETTING_ID_IP_ADDRESS:
+        if (commandLine.type == 'R')
+        {
+            // send the IP address to the client, format: "R<Service ID> <IP Addr 1> <IP Addr 2> <IP Addr 3> <IP Addr 4>"
+            // e.g. "R101 172 16 0 10"
+            api_printf("R%d %d %d %d %d\r\n", SETTING_ID_IP_ADDRESS,
+                        settings.ip_address_0, settings.ip_address_1,
+                        settings.ip_address_2, settings.ip_address_3);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the IP address
+            settings.ip_address_0 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.ip_address_1 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.ip_address_2 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.ip_address_3 = (uint8_t)(token->i32);
+
+            // write the IP address
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SETTING_ID_NETMASK:
+        if (commandLine.type == 'R')
+        {
+            // send the netmask to the client, format: "R<Service ID> <Netmask 1> <Netmask 2> <Netmask 3> <Netmask 4>"
+            // e.g. "R102 255 240 0 0"
+            api_printf("R%d %d %d %d %d\r\n", SETTING_ID_NETMASK,
+                        settings.netmask_0, settings.netmask_1,
+                        settings.netmask_2, settings.netmask_3);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the netmask
+            settings.netmask_0 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.netmask_1 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.netmask_2 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.netmask_3 = (uint8_t)(token->i32);
+
+            // write the netmask
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SETTING_ID_GATEWAY:
+        if (commandLine.type == 'R')
+        {
+            // send the gateway to the client, format: "R<Service ID> <Gateway 1> <Gateway 2> <Gateway 3> <Gateway 4>"
+            // e.g. "R103 172 16 0 1"
+            api_printf("R%d %d %d %d %d\r\n", SETTING_ID_GATEWAY,
+                        settings.gateway_0, settings.gateway_1,
+                        settings.gateway_2, settings.gateway_3);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the gateway
+            settings.gateway_0 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.gateway_1 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.gateway_2 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.gateway_3 = (uint8_t)(token->i32);
+
+            // write the gateway
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SETTING_ID_MAC_ADDRESS:
+        if (commandLine.type == 'R')
+        {
+            // send the MAC address to the client, format: "R<Service ID> <MAC Addr 1> <MAC Addr 2> <MAC Addr 3> <MAC Addr 4> <MAC Addr 5> <MAC Addr 6>"
+            // e.g. "R104 0 0 0 0 0 0"
+            api_printf("R%d %d %d %d %d %d %d\r\n", SETTING_ID_MAC_ADDRESS,
+                        settings.mac_address_0, settings.mac_address_1,
+                        settings.mac_address_2, settings.mac_address_3,
+                        settings.mac_address_4, settings.mac_address_5);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the MAC address
+            settings.mac_address_0 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.mac_address_1 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.mac_address_2 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.mac_address_3 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.mac_address_4 = (uint8_t)(token->i32);
+            token = token->next;
+            if (token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            settings.mac_address_5 = (uint8_t)(token->i32);
+
+            // write the MAC address
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SETTING_ID_TCP_PORT:
+        if (commandLine.type == 'R')
+        {
+            // send the Ethernet port to the client, format: "R<Service ID> <Port>"
+            // e.g. "R105 80"
+            api_printf("R%d %d\r\n", SETTING_ID_ETHERNET_PORT, settings.tcp_port);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the Ethernet port
+            settings.tcp_port = (uint16_t)(token->i32);
+
+            // write the Ethernet port
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED; /////////////////////////////////////////////
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
     default:
+    {
         // debug print the command
         vLoggingPrintf("Command: %c.%d \r\n", commandLine.type, commandLine.id);
         api_printf("%c%d", commandLine.type, commandLine.id);
@@ -741,19 +1201,21 @@ void api_execute_command()
             vLoggingPrintf("Variant: %d \r\n", commandLine.variant);
             api_printf(".%d", commandLine.variant);
         }
+        api_printf("\r\n");
+
         // print the parameters
         token_t* token = commandLine.token;
         while (token != NULL)
         {
             if (token->type == TOKEN_TYPE_LENGTH)
             {
-                vLoggingPrintf("Length: %d \r\n", token->u32);
+                vLoggingPrintf("Length: %d \r\n", token->i32);
             }
             else
             {
-                if (token->value_type == PARAM_TYPE_UINT32)
+                if (token->value_type == PARAM_TYPE_INT32)
                 {
-                    vLoggingPrintf("Param: %d \r\n", token->u32);
+                    vLoggingPrintf("Param: %d \r\n", token->i32);
                 }
                 else if (token->value_type == PARAM_TYPE_FLOAT)
                 {
@@ -771,16 +1233,13 @@ void api_execute_command()
 
         break;
     }
+    }
 
     // check if there is an error
     if (error_code != 0)
     {
         api_error(error_code);
     }
-    // free linked list of tokens
-    api_free_tokens(commandLine.token);
-    // clear the command line
-    api_reset_command_line();
 }
 
 io_status_t api_printf(const char *format_string, ...)

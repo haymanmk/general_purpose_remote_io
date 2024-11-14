@@ -1,10 +1,10 @@
-#include "ws28xx_pwm.h"
+#include "stm32f7xx_remote_io.h"
 
 // buffer for the PWM data
 static uint32_t ws28xx_pwm_buffer[WS28XX_PWM_BUFFER_SIZE] = {0};
 
 // color data for each LED
-static ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS] = {0};
+ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS] = {0};
 
 static TIM_HandleTypeDef *htim;
 static uint32_t tim_channel;
@@ -264,4 +264,14 @@ void __ws28xx_pwm_reset(void)
     {
         ws28xx_pwm_buffer[start_index+ i] =  0;
     }
+}
+
+void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim)
+{
+  ws28xx_pwm_dma_half_complete_callback();
+}
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+  ws28xx_pwm_dma_complete_callback();
 }

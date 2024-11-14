@@ -6,6 +6,8 @@
 // flags for instructing restoring function to restore settings
 #define SETTINGS_RESTORE_DEFAULTS (1 << 0)
 
+#define SETTINGS_VERSION 1
+
 // type of settings
 typedef struct EthernetSettings
 {
@@ -46,6 +48,7 @@ typedef struct PWMWS288XX_Settings
 
 typedef struct
 {
+    uint8_t settings_version;
     // settings for ethernet
     uint8_t ip_address_0;
     uint8_t ip_address_1;
@@ -76,5 +79,6 @@ extern settings_t settings;
 
 /* Export functions */
 void settings_init();
+io_status_t settings_save();
 
 #endif

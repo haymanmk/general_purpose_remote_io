@@ -19,7 +19,7 @@
 /**
  * @brief Number of LEDs per strip
  */
-#define NUMBER_OF_LEDS 50
+#define NUMBER_OF_LEDS 25
 
 /**
  * @brief Number of LEDs updated per ISR

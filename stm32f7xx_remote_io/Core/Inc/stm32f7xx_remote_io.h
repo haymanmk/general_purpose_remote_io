@@ -1,6 +1,8 @@
 #ifndef __STM32F7XX_REMOTE_IO_H
 #define __STM32F7XX_REMOTE_IO_H
 
+#define FW_VERSION "1.0.0"
+
 typedef enum {
     STATUS_OK = 0,
     STATUS_ERROR = 1,
@@ -24,11 +26,15 @@ enum Channel {
 #include "cpu_map.h"
 #include "utils.h"
 #include "freertos.h"
+#include "flash.h"
 #include "settings.h"
 #include "ethernet_if.h"
 #include "api.h"
+#include "ws28xx_pwm.h"
 #include "uart.h"
 #include "digital_input.h"
+#include "digital_output.h"
+#include "system_info.h"
 
 
 /* Exported functions */

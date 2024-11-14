@@ -8,6 +8,8 @@
     "stdlib.h": "c",
     "_stdlib.h": "c",
     "stm32f7xx_hal.h": "c",
-    "__config": "c"
+    "__config": "c",
+    "variant": "c",
+    "ws28xx_pwm.h": "c"
   }
 }

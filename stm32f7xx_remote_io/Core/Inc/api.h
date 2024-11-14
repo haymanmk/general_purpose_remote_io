@@ -3,7 +3,7 @@
 
 #include "stm32f7xx_remote_io.h"
 
-#define MAX_INT_DIGITS 8
+#define MAX_INT_DIGITS 10 // please take into consideration the maximum number of digits for int32_t
 
 #define API_RX_BUFFER_SIZE 128 // 1 ~ 254
 #define API_TX_BUFFER_SIZE 128 // 1 ~ 254
@@ -11,26 +11,28 @@
 
 // Service ID
 #define SERVICE_ID_STATUS 1
-#define SERVICE_ID_INPUT 2
-#define SERVICE_ID_OUTPUT 3
-#define SERVICE_ID_SUBSCRIBE_INPUT 4
-#define SERVICE_ID_UNSUBSCRIBE_INPUT 5
-#define SERVICE_ID_SERIAL 6
-#define SERVICE_ID_PWM_WS28XX_LED 7
-#define SERIVCE_ID_ANALOG_INPUT 8
-#define SERVICE_ID_ANALOG_OUTPUT 9
+#define SERVICE_ID_SYSTEM_INFO 2
+#define SERVICE_ID_INPUT 3
+#define SERVICE_ID_OUTPUT 4
+#define SERVICE_ID_SUBSCRIBE_INPUT 5
+#define SERVICE_ID_UNSUBSCRIBE_INPUT 6
+#define SERVICE_ID_SERIAL 7
+#define SERVICE_ID_PWM_WS28XX_LED 8
+#define SERIVCE_ID_ANALOG_INPUT 9
+#define SERVICE_ID_ANALOG_OUTPUT 10
 
 // Setting ID
 #define SETTING_ID_IP_ADDRESS 101
 #define SETTING_ID_ETHERNET_PORT 102
 #define SETTING_ID_NETMASK 103
 #define SETTING_ID_GATEWAY 104
-#define SETTING_ID_BAUD_RATE 105
-#define SETTING_ID_DATA_BITS 106
-#define SETTING_ID_PARITY 107
-#define SETTING_ID_STOP_BITS 108
-#define SETTING_ID_FLOW_CONTROL 109
-#define SETTING_ID_NUMBER_OF_LEDS 110
+#define SETTING_ID_MAC_ADDRESS 105
+#define SETTING_ID_BAUD_RATE 106
+#define SETTING_ID_DATA_BITS 107
+#define SETTING_ID_PARITY 108
+#define SETTING_ID_STOP_BITS 109
+#define SETTING_ID_FLOW_CONTROL 110
+#define SETTING_ID_NUMBER_OF_LEDS 111
 
 enum {
     TOKEN_TYPE_PARAM = 1,
@@ -38,7 +40,7 @@ enum {
 };
 
 enum {
-    PARAM_TYPE_UINT32 = 1,
+    PARAM_TYPE_INT32 = 1,
     PARAM_TYPE_FLOAT,
     PARAM_TYPE_ANY,
 };
@@ -74,7 +76,7 @@ typedef struct Token {
     union
     {
         /* data */
-        uint32_t u32;
+        int32_t i32;
         float f;
         void * any;
     };

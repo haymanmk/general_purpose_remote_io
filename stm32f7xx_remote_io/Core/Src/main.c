@@ -112,11 +112,17 @@ int main(void)
   // Initialize API
   api_init();
 
+  // Initialize PWM for WS28XX LED
+  ws28xx_pwm_init(&htim3, TIM_CHANNEL_1);
+
   // Initialize UART
   uart_init();
 
   // Initialize digital inputs
   digital_input_init();
+
+  // Initialize digital outputs
+  digital_output_init();
 
   // start scheduler
   vTaskStartScheduler();
@@ -342,7 +348,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, DO_14_Pin|DO_15_Pin|DO_16_Pin|DO_7_Pin
                           |DO_8_Pin|DO_9_Pin|DO_10_Pin|DO_11_Pin
-                          |DO_12_Pin|DO_13_Pin, GPIO_PIN_RESET);
+                          |DO_12_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
@@ -350,6 +356,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, DO_1_Pin|DO_2_Pin|DO_3_Pin|DO_4_Pin
                           |DO_5_Pin|DO_6_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(DO_13_GPIO_Port, DO_13_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : DI_2_Pin DI_3_Pin DI_4_Pin DI_5_Pin
                            DI_6_Pin DI_7_Pin DI_8_Pin DI_9_Pin
