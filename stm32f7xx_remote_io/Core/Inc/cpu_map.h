@@ -128,10 +128,4 @@ enum {
     PWM_WS28XX_LED_MAX,
 };
 
-// UART
-enum {
-    UART_1 = 1,
-    UART_MAX,
-};
-
 #endif

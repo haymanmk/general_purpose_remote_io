@@ -2,6 +2,21 @@
 
 #define PARAM_STR_MAX_LENGTH    MAX_INT_DIGITS+2 // 1 for sign, 1 for null terminator
 
+// run through the linked list of tokens and copy the data to the buffer
+#define API_COPY_TOKEN_DATA_TO_BUFFER(token, buffer, length) \
+    do { \
+        token_t *t = token; \
+        for (uint8_t i = 0; i < length; i++) { \
+            if (t == NULL) { \
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER; \
+                break; \
+            } \
+            buffer[i] = t->i32; \
+            t = t->next; \
+        } \
+    } while (0); \
+    if (error_code) break
+
 
 // function prototypes
 void api_task(void *parameters);
@@ -27,7 +42,7 @@ static uint8_t txBufferHead = 0;
 static uint8_t txBufferTail = 0;
 
 static command_line_t commandLine = {0}; // store command line data
-static char paramBuffer[UART_TX_BUFFER_SIZE] = {'\0'}; // store data for ANY type
+static char anyTypeBuffer[UART_TX_BUFFER_SIZE] = {'\0'}; // store data for ANY type
 token_t* lastToken = NULL;               // store the last token
 
 extern ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS];
@@ -484,7 +499,7 @@ io_status_t api_process_data()
         {
             if (param_index < lastToken->i32)
             {
-                paramBuffer[param_index++] = chr;
+                anyTypeBuffer[param_index++] = chr;
             }
             
             // check if it is the end of the parameter based on the length
@@ -529,7 +544,7 @@ io_status_t api_process_data()
             }
             else
             {
-                token->any = &paramBuffer;
+                token->any = &anyTypeBuffer;
             }
 
             // reset parameters
@@ -652,10 +667,16 @@ void api_execute_command()
             }
             else
             {
+                // ensure the index of uart is valid
+                if (commandLine.variant >= UART_MAX)
+                {
+                    error_code = API_ERROR_CODE_INVALID_COMMAND_VARIANT;
+                    break;
+                }
                 // send the message to the serial port
-                uart_printf(CHANNEL_1, "%s", (char*)token->any);
+                uart_printf((uart_index_t)(commandLine.variant), "%s", (char*)token->any);
                 //clear param buffer
-                memset(paramBuffer, '\0', sizeof(paramBuffer));
+                memset(anyTypeBuffer, '\0', sizeof(anyTypeBuffer));
             }
         }
         else
@@ -916,43 +937,19 @@ void api_execute_command()
         }
         else if (commandLine.type == 'W')
         {
-            // check if token is valid
-            if (commandLine.token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
+            uint8_t ip_address[4] = {0};
             token_t* token = commandLine.token;
 
-            // write the IP address
-            settings.ip_address_0 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // copy IP address from token to buffer
+            API_COPY_TOKEN_DATA_TO_BUFFER(token, ip_address, 4);
+            
+            // update the IP address in the settings
+            settings.ip_address_0 = ip_address[0];
+            settings.ip_address_1 = ip_address[1];
+            settings.ip_address_2 = ip_address[2];
+            settings.ip_address_3 = ip_address[3];
 
-            settings.ip_address_1 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.ip_address_2 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.ip_address_3 = (uint8_t)(token->i32);
-
-            // write the IP address
+            // save IP address in flash
             if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
             {
                 error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
@@ -975,46 +972,22 @@ void api_execute_command()
         }
         else if (commandLine.type == 'W')
         {
-            // check if token is valid
-            if (commandLine.token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
+            uint8_t netmask[4] = {0};
             token_t* token = commandLine.token;
 
-            // write the netmask
-            settings.netmask_0 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // copy netmask from token to buffer
+            API_COPY_TOKEN_DATA_TO_BUFFER(token, netmask, 4);
 
-            settings.netmask_1 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // update the netmask in the settings
+            settings.netmask_0 = netmask[0];
+            settings.netmask_1 = netmask[1];
+            settings.netmask_2 = netmask[2];
+            settings.netmask_3 = netmask[3];
 
-            settings.netmask_2 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.netmask_3 = (uint8_t)(token->i32);
-
-            // write the netmask
+            // save netmask in flash
             if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
             {
-                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+                error_code = API_ERROR_CODE_UPDATE_NETMASK_FAILED;
             }
             else API_DEFAULT_RESPONSE();
         }
@@ -1034,46 +1007,22 @@ void api_execute_command()
         }
         else if (commandLine.type == 'W')
         {
-            // check if token is valid
-            if (commandLine.token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
+            uint8_t gateway[4] = {0};
             token_t* token = commandLine.token;
 
-            // write the gateway
-            settings.gateway_0 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // copy gateway from token to buffer
+            API_COPY_TOKEN_DATA_TO_BUFFER(token, gateway, 4);
 
-            settings.gateway_1 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // update the gateway in the settings
+            settings.gateway_0 = gateway[0];
+            settings.gateway_1 = gateway[1];
+            settings.gateway_2 = gateway[2];
+            settings.gateway_3 = gateway[3];
 
-            settings.gateway_2 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.gateway_3 = (uint8_t)(token->i32);
-
-            // write the gateway
+            // save gateway in flash
             if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
             {
-                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+                error_code = API_ERROR_CODE_UPDATE_GATEWAY_FAILED;
             }
             else API_DEFAULT_RESPONSE();
         }
@@ -1094,62 +1043,24 @@ void api_execute_command()
         }
         else if (commandLine.type == 'W')
         {
-            // check if token is valid
-            if (commandLine.token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
+            uint8_t mac_address[6] = {0};
             token_t* token = commandLine.token;
 
-            // write the MAC address
-            settings.mac_address_0 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // copy MAC address from token to buffer
+            API_COPY_TOKEN_DATA_TO_BUFFER(token, mac_address, 6);
 
-            settings.mac_address_1 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
+            // update the MAC address in the settings
+            settings.mac_address_0 = mac_address[0];
+            settings.mac_address_1 = mac_address[1];
+            settings.mac_address_2 = mac_address[2];
+            settings.mac_address_3 = mac_address[3];
+            settings.mac_address_4 = mac_address[4];
+            settings.mac_address_5 = mac_address[5];
 
-            settings.mac_address_2 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.mac_address_3 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.mac_address_4 = (uint8_t)(token->i32);
-            token = token->next;
-            if (token == NULL)
-            {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-
-            settings.mac_address_5 = (uint8_t)(token->i32);
-
-            // write the MAC address
+            // save MAC address in flash
             if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
             {
-                error_code = API_ERROR_CODE_UPDATE_IP_FAILED;
+                error_code = API_ERROR_CODE_UPDATE_MAC_ADDRESS_FAILED;
             }
             else API_DEFAULT_RESPONSE();
         }
@@ -1163,7 +1074,7 @@ void api_execute_command()
         {
             // send the Ethernet port to the client, format: "R<Service ID> <Port>"
             // e.g. "R105 80"
-            api_printf("R%d %d\r\n", SETTING_ID_ETHERNET_PORT, settings.tcp_port);
+            api_printf("R%d %d\r\n", SETTING_ID_TCP_PORT, settings.tcp_port);
         }
         else if (commandLine.type == 'W')
         {
@@ -1225,7 +1136,7 @@ void api_execute_command()
                 {
                     vLoggingPrintf("Param: %s \r\n", (char*)token->any);
                     // clear the buffer
-                    memset(paramBuffer, '\0', sizeof(paramBuffer));
+                    memset(anyTypeBuffer, '\0', sizeof(anyTypeBuffer));
                 }
             }
             token = token->next;

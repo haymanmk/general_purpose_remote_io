@@ -27,7 +27,14 @@ const settings_t defaults = {
         .baudrate = 115200,
         .data_bits = UART_WORDLENGTH_8B,
         .stop_bits = UART_STOPBITS_1,
-        .parity = UART_PARITY_EVEN,
+        .parity = UART_PARITY_NONE,
+        .flow_control = 0,
+    },
+    .uart_2 = {
+        .baudrate = 9600,
+        .data_bits = UART_WORDLENGTH_8B,
+        .stop_bits = UART_STOPBITS_1,
+        .parity = UART_PARITY_NONE,
         .flow_control = 0,
     },
     .pwmws288xx_1 = {

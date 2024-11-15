@@ -6,7 +6,9 @@
 // flags for instructing restoring function to restore settings
 #define SETTINGS_RESTORE_DEFAULTS (1 << 0)
 
-#define SETTINGS_VERSION 1
+// Note: please modify the settings version
+// whenever there is a change in the settings structure.
+#define SETTINGS_VERSION 2
 
 // type of settings
 typedef struct EthernetSettings
@@ -71,6 +73,8 @@ typedef struct
     uint8_t tcp_port;
     // settings for uart at channel 1
     uart_settings_t uart_1;
+    // settings for uart at channel 2
+    uart_settings_t uart_2;
     // settings for pwmws288xx at channel 1
     pwmws288xx_settings_t pwmws288xx_1;
 } settings_t;
