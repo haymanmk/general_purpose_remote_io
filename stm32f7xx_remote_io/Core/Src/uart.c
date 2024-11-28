@@ -105,7 +105,7 @@ io_status_t uart_increment_rx_buffer_tail(uart_handle_t *uart_handle)
     UTILS_INCREMENT_BUFFER_TAIL(uart_handle->rx_tail, uart_handle->rx_head, UART_RX_BUFFER_SIZE);
 }
 
-io_status_t uart_printf(uart_index_t uart_index, const char *format_string, ...)
+io_status_t uart_printf(uart_index_t uart_index, const uint8_t *data, uint8_t len)
 {
     // assert if uart index is valid
     if (uart_index >= UART_MAX)
@@ -113,19 +113,19 @@ io_status_t uart_printf(uart_index_t uart_index, const char *format_string, ...)
         return STATUS_ERROR;
     }
 
-    char buffer[UART_TX_BUFFER_SIZE] = {'\0'};
-    va_list args;
-    va_start(args, format_string);
-    vsnprintf(buffer, UART_TX_BUFFER_SIZE, format_string, args);
-    va_end(args);
-
-    uint8_t indexTerminator = 0;
-    UTILS_SEARCH_FOR_END_OF_STRING(buffer, indexTerminator, '\0');
-
     UART_HandleTypeDef *huart = uartHandles[uart_index].huart;
 
+    // debug print
+    vLoggingPrintf("UART%d: ", uart_index);
+    for (uint8_t i = 0; i < len; i++)
+    {
+        vLoggingPrintf("%x ", data[i]);
+    }
+    // debug print new line
+    vLoggingPrintf("\r\n");
+
     // transmit the data
-    if (HAL_UART_Transmit(huart, (uint8_t *)buffer, indexTerminator, HAL_MAX_DELAY) != HAL_OK)
+    if (HAL_UART_Transmit(huart, data, len, HAL_MAX_DELAY) != HAL_OK)
     {
         return STATUS_ERROR;
     }
@@ -143,18 +143,28 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
         char chr = uartHandle->rx_buffer[uartHandle->rx_head];
 
-        if (chr == '\n')
+        if ((chr == '\r') || (chr == '\n'))
         {
+            uart_increment_rx_buffer_head(uartHandle);
+            uartHandle->control_flags &= ~UART_CTL_RECV_NONZERO;
             // set new line flag
             uartHandle->is_new_line++;
             // give notification to the UART task
             vTaskNotifyGiveFromISR(processRxTaskHandle, &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
-
-        if (uart_increment_rx_buffer_head(uartHandle) != STATUS_OK)
+        else if (chr != '\0')
         {
-            Error_Handler();
+            if ((uartHandle->control_flags & UART_CTL_RECV_NONZERO) == 0)
+            {
+                uartHandle->control_flags |= UART_CTL_RECV_NONZERO;
+            }
+        }
+
+        // increment rx buffer head
+        if (uartHandle->control_flags & UART_CTL_RECV_NONZERO)
+        {
+            uart_increment_rx_buffer_head(uartHandle);
         }
 
         if (HAL_UART_Receive_IT(uartHandle->huart, (uint8_t*)(uartHandle->rx_buffer + uartHandle->rx_head), 1) != HAL_OK)

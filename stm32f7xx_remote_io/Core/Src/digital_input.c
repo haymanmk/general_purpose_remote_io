@@ -23,7 +23,7 @@ CREATE_DIGITAL_INPUT_INSTANCE(17);
 CREATE_DIGITAL_INPUT_INSTANCE(18);
 #endif
 
-#define DIGITAL_INPUT_UPDATE_INTERVAL 100 // ms
+#define DIGITAL_INPUT_UPDATE_INTERVAL 10 // ms
 
 /* type definition */
 typedef struct NodeSubscribedInputs
@@ -88,8 +88,8 @@ void digital_input_task(void* parameters)
                 // update the state
                 input->state = state;
 
-                // Notify clients with the format: "R<Service ID> <Input Index> <State>"
-                api_printf("R%d %d %d\r\n", SERVICE_ID_INPUT, current->index, state);
+                // Notify clients with the format: "S<Service ID> <Input Index> <State>"
+                api_printf("S%d %d %d\r\n", SERVICE_ID_SUBSCRIBE_INPUT, current->index, state);
             }
             current = current->next;
         }
@@ -199,6 +199,10 @@ void digital_input_subscribe(uint8_t index)
 
     // add the node to the linked list
     digital_input_append_node(newNode);
+
+    // update input state
+    digital_input_t* input = digital_input_instance(index);
+    input->state = digital_input_read(index);
 
     // give a notification to the task
     xTaskNotifyGive(digitalInputTaskHandle);

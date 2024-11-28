@@ -276,7 +276,7 @@ static void MX_UART5_Init(void)
   huart5.Init.OverSampling = UART_OVERSAMPLING_16;
   huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  uart_msp_init(UART_2, &huart5, &(settings.uart_2));
+  uart_msp_init(UART_2, &huart5, &(settings.uart[UART_2]));
   return;
 
   /* USER CODE END UART5_Init 0 */
@@ -322,7 +322,7 @@ static void MX_USART2_UART_Init(void)
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
   huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  uart_msp_init(UART_1, &huart2, &(settings.uart_1));
+  uart_msp_init(UART_1, &huart2, &(settings.uart[UART_1]));
   return;
 
   /* USER CODE END USART2_Init 0 */
@@ -393,7 +393,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, DO_14_Pin|DO_15_Pin|DO_16_Pin|DO_7_Pin
                           |DO_8_Pin|DO_9_Pin|DO_10_Pin|DO_11_Pin
-                          |DO_12_Pin, GPIO_PIN_RESET);
+                          |DO_12_Pin|DO_13_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
@@ -401,9 +401,6 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, DO_1_Pin|DO_2_Pin|DO_3_Pin|DO_4_Pin
                           |DO_5_Pin|DO_6_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(DO_13_GPIO_Port, DO_13_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : DI_2_Pin DI_3_Pin DI_4_Pin DI_5_Pin
                            DI_6_Pin DI_7_Pin DI_8_Pin DI_9_Pin

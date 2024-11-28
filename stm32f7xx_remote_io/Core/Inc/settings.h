@@ -71,10 +71,8 @@ typedef struct
     uint8_t mac_address_4;
     uint8_t mac_address_5;
     uint8_t tcp_port;
-    // settings for uart at channel 1
-    uart_settings_t uart_1;
-    // settings for uart at channel 2
-    uart_settings_t uart_2;
+    // settings for uart channels
+    uart_settings_t uart[UART_MAX];
     // settings for pwmws288xx at channel 1
     pwmws288xx_settings_t pwmws288xx_1;
 } settings_t;

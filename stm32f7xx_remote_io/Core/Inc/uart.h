@@ -4,16 +4,10 @@
 #define UART_RX_BUFFER_SIZE 128
 #define UART_TX_BUFFER_SIZE 64
 
+// control flags for UART handle
+#define UART_CTL_RECV_NONZERO (1 << 0)
+
 /* Type definition */
-// UART
-// Please do not modify the enum values manually,
-// it is related to the counting of the maximum number of UARTs
-// and the index in UART handle array.
-typedef enum {
-    UART_1,
-    UART_2,
-    UART_MAX,
-} uart_index_t;
 
 typedef struct {
     UART_HandleTypeDef *huart;
@@ -21,6 +15,7 @@ typedef struct {
     uint8_t rx_head;
     uint8_t rx_tail;
     uint8_t is_new_line;
+    uint8_t control_flags;
 } uart_handle_t;
 
 /* Macros */
@@ -42,6 +37,6 @@ typedef struct {
 /* Function prototypes */
 void uart_init();
 void uart_msp_init(uart_index_t uart_index, UART_HandleTypeDef *huart, uart_settings_t *uart_settings);
-io_status_t uart_printf(uint8_t ch, const char *format_string, ...);
+io_status_t uart_printf(uart_index_t uart_index, const uint8_t *data, uint8_t len);
 
 #endif

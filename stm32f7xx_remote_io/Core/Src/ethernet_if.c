@@ -513,11 +513,9 @@ static void prvProcessTxTask(void *pvParameters)
         }
 
         // Check if the character is a newline character
-        if (chr != '\n')
-        {
+        if ((chr != '\r') && (chr != '\n'))
             continue;
-        }
-
+        
         // Send the data
         BaseType_t bytesSent = FreeRTOS_send(xSocket, str, strIndex, 0);
 

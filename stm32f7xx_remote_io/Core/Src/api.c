@@ -652,9 +652,14 @@ void api_execute_command()
         {
             // search for the message token and ingore the length token
             token_t* token = commandLine.token;
+            uint8_t length = 0;
             while (token != NULL)
             {
-                if (token->value_type == PARAM_TYPE_ANY)
+                if (token->type == TOKEN_TYPE_LENGTH)
+                {
+                    length = token->i32;
+                }
+                else if (token->value_type == PARAM_TYPE_ANY)
                 {
                     break;
                 }
@@ -674,7 +679,7 @@ void api_execute_command()
                     break;
                 }
                 // send the message to the serial port
-                uart_printf((uart_index_t)(commandLine.variant), "%s", (char*)token->any);
+                uart_printf((uart_index_t)(commandLine.variant), (uint8_t*)token->any, length);
                 //clear param buffer
                 memset(anyTypeBuffer, '\0', sizeof(anyTypeBuffer));
             }
@@ -1091,6 +1096,47 @@ void api_execute_command()
             settings.tcp_port = (uint16_t)(token->i32);
 
             // write the Ethernet port
+            if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_IP_FAILED; /////////////////////////////////////////////
+            }
+            else API_DEFAULT_RESPONSE();
+        }
+        else
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_TYPE;
+        }
+        break;
+    case SETTING_ID_BAUD_RATE:
+        // assert if variant is valid
+        if (commandLine.variant >= UART_MAX)
+        {
+            error_code = API_ERROR_CODE_INVALID_COMMAND_VARIANT;
+            break;
+        }
+
+        if (commandLine.type == 'R')
+        {
+            // send the baud rate to the client, format: "R<Service ID> <Baud Rate>"
+            // e.g. "R106.x 115200"
+            api_printf("R%d.%d %d\r\n", SETTING_ID_BAUD_RATE, commandLine.variant,
+                        settings.uart[commandLine.variant].baudrate);
+        }
+        else if (commandLine.type == 'W')
+        {
+            // check if token is valid
+            if (commandLine.token == NULL)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
+
+            token_t* token = commandLine.token;
+
+            // write the baud rate
+            settings.uart[commandLine.variant].baudrate = (uint32_t)(token->i32);
+
+            // write the baud rate
             if (flash_write_data_with_checksum(FLASH_SECTOR_SETTINGS, (uint8_t*)&settings, sizeof(settings_t)) != STATUS_OK)
             {
                 error_code = API_ERROR_CODE_UPDATE_IP_FAILED; /////////////////////////////////////////////
