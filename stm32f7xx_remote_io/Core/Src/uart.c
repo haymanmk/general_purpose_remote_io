@@ -165,6 +165,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         if (uartHandle->control_flags & UART_CTL_RECV_NONZERO)
         {
             uart_increment_rx_buffer_head(uartHandle);
+            printf("uartRcv: %c\n", chr);
         }
 
         if (HAL_UART_Receive_IT(uartHandle->huart, (uint8_t*)(uartHandle->rx_buffer + uartHandle->rx_head), 1) != HAL_OK)

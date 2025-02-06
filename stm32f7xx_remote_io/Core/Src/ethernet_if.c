@@ -54,6 +54,12 @@ void ethernetif_task(void *pvParameters)
         settings.netmask_2,
         settings.netmask_3};
     listeningPort = LISTENING_PORT + settings.tcp_port;
+    MACAddr[0] = settings.mac_address_0;
+    MACAddr[1] = settings.mac_address_1;
+    MACAddr[2] = settings.mac_address_2;
+    MACAddr[3] = settings.mac_address_3;
+    MACAddr[4] = settings.mac_address_4;
+    MACAddr[5] = settings.mac_address_5;
 
     // check if USER Button is continuously pressed over 5 seconds,
     // then use the default IP address and port
@@ -488,7 +494,7 @@ static void prvProcessRxTask(void *pvParameters)
 static void prvProcessTxTask(void *pvParameters)
 {
     Socket_t xSocket = (Socket_t)pvParameters;
-    char str[105] = {'\0'};
+    char str[API_TX_BUFFER_SIZE] = {'\0'};
     uint8_t strIndex = 0;
 
     for (;;)
@@ -508,7 +514,7 @@ static void prvProcessTxTask(void *pvParameters)
 
         if (++strIndex >= sizeof(str))
         {
-            FreeRTOS_debug_printf(("Buffer overflow\n"));
+            FreeRTOS_debug_printf(("Buffer overflow\r\n"));
             strIndex = 0;
         }
 
@@ -522,11 +528,11 @@ static void prvProcessTxTask(void *pvParameters)
         // Check if the data was sent successfully
         if (bytesSent > 0)
         {
-            FreeRTOS_debug_printf(("Data sent: %s\n", str));
+            FreeRTOS_debug_printf(("Data sent: %s\r\n", str));
         }
         else if (bytesSent < 0)
         {
-            FreeRTOS_debug_printf(("Failed to send data\n"));
+            FreeRTOS_debug_printf(("Failed to send data\r\n"));
             break;
         }
 

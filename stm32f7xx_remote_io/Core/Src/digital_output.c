@@ -116,3 +116,12 @@ void digital_output_write(uint8_t index, bool state)
     HAL_GPIO_WritePin(output->port, output->pin, pinState);
     output->state = state;
 }
+
+// write data to digital outputs
+void digital_output_write_multiple(uint32_t data, uint8_t start_index, uint8_t length)
+{
+    for (uint8_t i = 0; i < length; i++)
+    {
+        digital_output_write(start_index + i, (data >> i) & 0x01);
+    }
+}

@@ -59,11 +59,11 @@ At the `Type` column, the symbol `R` stands for **Readable**, and `W` means **Wr
 | 01   | Status                     | Read device status.                                          | `R01`<br />The return would be `R01 OK`. Client can use this feature to check the connection with this device. | R    |
 | 02   | Info.                      | Read device information.                                     | `R02`<br />The device would return everything from firmware version, command format, and hardware info, etc. | R    |
 | 03   | Input                      | Read input status. To get the pin ID, please refer to [Input Mapping](#input-mapping). | `R03 -1`: read all inputs<br />`R03 1`: read input_1         | R    |
-| 04   | Output                     | Read or write output status. To get the pin ID, please refer to [Output Mapping](#output-mapping) | - **Read**<br />**format**: `R04 [PIN/NONE]`<br />`R04`: read all outputs<br />`R04 1`: read output_1<br /><br />- **Write**<br />**format**: `W04 [PIN] [VALUE]`<br />`W04 4 0`: write 0 at output_4<br />`W04 4 1`: write 1 at output_4 | R/W  |
+| 04.x | Output                     | Read or write output status. To get the pin ID, please refer to [Output Mapping](#output-mapping) | - **Read**<br />**format**: `R04 [PIN]`<br />`R04 -1`: read all outputs<br />`R04 1`: read output_1<br /><br />- **Write**<br />**format**: <br />*Write single output* - `W04 [PIN] [VALUE]`<br />*Write multiple outputs* - `W04.1 [DATA] [START_INDEX] [LENGTH]`<br />`W04 4 0`: write 0 at output_4<br />`W04 4 1`: write 1 at output_4<br />`W04.1 41 2 8`: manipulate the state from output 2 to  output 9 based on the bitwise value  `0b0010 1001`. i.e. output 2, 5, and 7 will be set to 1. | R/W  |
 | 05   | Subscribe                  | **Subscribing input status** provides an event-driven feature to notify clients the subscribed inputs has been updated without having to polling input status from the client side which is relatively resource-consuming. | `R05`: read which pin has been subscribed. The return would be in the format as `R05 [PIN_2] [PIN_7] [PIN_N]`, which lists all the subscribed inputs by their pin ID.<br />`W05 [PIN_10]`: subscribe input_10.<br />`S05 [PIN_10] [STATUS]`: the format of update message. | R/W  |
 | 06   | Unsubscribe                | **Unsubscribing input status** provides an approach for clients to cancel the subscription at particular subscribed input. | Refer to **Subscribe** service.                              | W    |
 | 07.x | Serial                     | Send a message through serial.                               | `W07.x [LEN] [MSG]`: `x` specifies which channel to send. `[LEN]` denotes the length of the message. `[MSG]` is the message to be sent via serial which can be in any type like `char`, `string`, or `number`. `<br>` The return to a client would be the response from another device connected with the serial port once it has been received, and the format of the return would be `W07 [CH] [RESPONSE]`. | W    |
-| 08   | PWM (WS28xx)               | Control WS28xx LED strip by PWM.                             | `R08 [CH] [LED]`: read RGB setting at `[LED]` LED and `[CH]` channel.<br />Return would be `R08 [CH] [LED] [R] [G] [B]`.<br />e.g. `R08 1 4`, the return could be `R08 1 4 127 23 255`<br /><br />`W08 [CH] [LED] [R] [G] [B]`: write RGB, specified in `[R]`, `[G]`, and `[B]`, respectively, to `[LED]` LED at `[CH]` channel.<br />e.g. `W08 1 19 255 255 0`<br /><br />Note: This device only supports at most two channels for this application. The number specified in `[CH]` should range from 0 to 1. The maximum ID of `[LED]` depends on the number of LEDs configured by **Number of LEDs** as elaborating in [Settings](#settings), which should range from 0 to N-1. | R/W  |
+| 08   | PWM (WS28xx)               | Control WS28xx LED strip by PWM.                             | `R08 [LED]`: read RGB setting at `[LED]` LED.<br />Return would be `R08 [LED] [R] [G] [B]`.<br />e.g. `R08 4`, the return could be `R08 4 127 23 255`<br /><br />`W08 [LED] [R] [G] [B]`: write RGB, specified in `[R]`, `[G]`, and `[B]`, respectively, to `[LED]` LED.<br />e.g. `W08 19 255 255 0`<br /><br />Note: This device only supports at most two channels for this application. The maximum ID of `[LED]` depends on the number of LEDs configured by **Number of LEDs** as elaborating in [Settings](#settings), which should range from 0 to N-1. | R/W  |
 | 09   | Analog input<br />(To-do)  | Read analog data at input.                                   | `R09 [PIN]`: read analog data at `[PIN]` pin.<br />Return would be `R09 [PIN] [FLOAT_VALUE]`. The `[FLOAT_VALUE]` is the analog data represented in floating point. | R    |
 | 10   | Analog output<br />(To-do) | Write analog data at output.                                 | `W10 [PIN] [FLOAT_VALUE]`: write `[FLOAT_VALUE]` at output which is usually represented in floating point. | W    |
 
@@ -99,17 +99,45 @@ At the `Type` column, the symbols
 
 | Pin ID | STM32 Pin ID | Description   |
 | :----- | :----------- | :------------ |
-| 1      | PA1          | Digital Input |
-| 2      | PA2          | Digital Input |
+| 1      | PE0          | Digital Input |
+| 2      | PE2          | Digital Input |
+| 3      | PE3          | Digital Input |
+| 4      | PE4          | Digital Input |
+| 5      | PE5          | Digital Input |
+| 6      | PE6          | Digital Input |
+| 7      | PE7          | Digital Input |
+| 8      | PE8          | Digital Input |
+| 9      | PE10         | Digital Input |
+| 10     | PF0          | Digital Input |
+| 11     | PF1          | Digital Input |
+| 12     | PF2          | Digital Input |
+| 13     | PF4          | Digital Input |
+| 14     | PF7          | Digital Input |
+| 15     | PF8          | Digital Input |
+| 16     | PF9          | Digital Input |
 
 ## Digital Output Mapping
 
 | Pin ID | STM32 Pin ID | Description    |
 | :----- | :----------- | :------------- |
-| 1      | PB1          | Digital Output |
-| 2      | PB2          | Digital Output |
+| 1      | PC7          | Digital Output |
+| 2      | PC8          | Digital Output |
+| 3      | PC9          | Digital Output |
+| 4      | PC10         | Digital Output |
+| 5      | PC11         | Digital Output |
+| 6      | PC12         | Digital Output |
+| 7      | PD0          | Digital Output |
+| 8      | PD1          | Digital Output |
+| 9      | PD2          | Digital Output |
+| 10     | PD3          | Digital Output |
+| 11     | PD4          | Digital Output |
+| 12     | PD6          | Digital Output |
+| 13     | PD7          | Digital Output |
+| 14     | PD11         | Digital Output |
+| 15     | PD12         | Digital Output |
+| 16     | PD13         | Digital Output |
 
-## Analog Input Mapping
+## Analog Input Mapping (UNDER DEVELOPMENT)
 
 | Pin ID | STM32 Pin ID | Description  |
 | ------ | ------------ | ------------ |
@@ -117,7 +145,7 @@ At the `Type` column, the symbols
 | 2      | PE2          | Analog Input |
 |        |              |              |
 
-## Analog Output Mapping
+## Analog Output Mapping (UNDER DEVELOPMENT)
 
 | Pin ID | STM32 Pin ID | Description   |
 | ------ | ------------ | ------------- |
@@ -131,15 +159,14 @@ At the `Type` column, the symbols
 
 | Channel ID | STM32 Pins              |
 | :--------- | :---------------------- |
-| 1          | TX: PDx<br />RX: PDx |
-| 2          | TX: PDx<br />RX: PDx |
+| 1          | USART2<br />TX: PD5<br />RX: PA3 |
+| 2          | UART5<br />TX: PB6<br />RX: PB12 |
 
 ## PWM (WS28xx)
 
 | Channel ID | STM32 Pins |
 | :--------- | :--------- |
-| 1          | PWM: PDx   |
-| 2          | PWM: PDx   |
+| 1          | PWM: PA6   |
 
 # Error Code
 

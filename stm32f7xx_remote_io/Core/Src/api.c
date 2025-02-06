@@ -141,12 +141,12 @@ io_status_t api_append_to_tx_ring_buffer(char *data, BaseType_t len)
     for (uint8_t i = 0; i < len; i++)
     {
         // check if buffer is full
-        if (api_is_tx_buffer_full() == STATUS_OK)
-        {
-            // give semaphore
-            xSemaphoreGive(apiAppendTxSemaphoreHandle);
-            return STATUS_FAIL;
-        }
+        // if (api_is_tx_buffer_full() == STATUS_OK)
+        // {
+        //     // give semaphore
+        //     xSemaphoreGive(apiAppendTxSemaphoreHandle);
+        //     return STATUS_FAIL;
+        // }
 
         // append data to buffer
         txBuffer[txBufferHead] = data[i];
@@ -811,31 +811,73 @@ void api_execute_command()
         token_t* token = commandLine.token;
 
         // get output index
-        uint16_t output_index = token->i32;
-
-        // check if parameter is valid
-        if (output_index == 0 || output_index >= DIGITAL_OUTPUT_MAX)
-        {
-            error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-            break;
-        }
+        int16_t output_index = token->i32;
 
         // execute output command
         if (commandLine.type == 'W')
         {
-            // get the write value
-            token = token->next;
-            if (token == NULL)
+            // handle different variants of the command
+            switch (commandLine.variant)
             {
-                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
-                break;
-            }
-            bool state = (token->i32 > 0) ? true : false;
-            
-            // write to the digital output
-            digital_output_write(output_index, state);
+                case 1: // write to multiple outputs
+                {
+                    // get the write value
+                    if (token == NULL)
+                    {
+                        error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                        break;
+                    }
+                    uint32_t data = token->i32;
 
-            API_DEFAULT_RESPONSE();
+                    // get the start index
+                    token = token->next;
+                    if (token == NULL)
+                    {
+                        error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                        break;
+                    }
+                    uint8_t start_index = (uint8_t)token->i32;
+
+                    // get the length
+                    token = token->next;
+                    if (token == NULL)
+                    {
+                        error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                        break;
+                    }
+                    uint8_t length = (uint8_t)token->i32;
+
+                    // write to multiple digital outputs
+                    digital_output_write_multiple(data, start_index, length);
+
+                    API_DEFAULT_RESPONSE();
+                    break;
+                }
+                default: // write to single output
+                {
+                    // check if parameter is valid
+                    if (output_index == 0 || output_index >= DIGITAL_OUTPUT_MAX)
+                    {
+                        error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                        break;
+                    }
+
+                    // get the write value
+                    token = token->next;
+                    if (token == NULL)
+                    {
+                        error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                        break;
+                    }
+                    bool state = (token->i32 > 0) ? true : false;
+
+                    // write to the digital output
+                    digital_output_write(output_index, state);
+
+                    API_DEFAULT_RESPONSE();
+                    break;
+                }
+            }
         }
         else if (commandLine.type == 'R')
         {

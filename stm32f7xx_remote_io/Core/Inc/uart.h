@@ -1,7 +1,7 @@
 #ifndef __UART_H
 #define __UART_H
 
-#define UART_RX_BUFFER_SIZE 128
+#define UART_RX_BUFFER_SIZE 64 
 #define UART_TX_BUFFER_SIZE 64
 
 // control flags for UART handle

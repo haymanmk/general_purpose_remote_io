@@ -26,5 +26,6 @@ void digital_output_init();
 bool digital_output_read(uint8_t index);
 uint32_t digital_output_read_all();
 void digital_output_write(uint8_t index, bool state);
+void digital_output_write_multiple(uint32_t data, uint8_t start_index, uint8_t length);
 
 #endif

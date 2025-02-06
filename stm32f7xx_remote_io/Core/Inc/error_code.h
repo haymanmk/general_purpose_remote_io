@@ -1,7 +1,7 @@
 #ifndef __ERROR_CODE_H
 #define __ERROR_CODE_H
 
-#define ERROR_CODE_FORMAT "ERR%d\n"
+#define ERROR_CODE_FORMAT "ERR%d\r\n"
 
 /* Error code */
 // API error code
