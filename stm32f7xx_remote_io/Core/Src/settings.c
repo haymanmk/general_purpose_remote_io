@@ -17,8 +17,8 @@ const settings_t defaults = {
     .gateway_2 = 0,
     .gateway_3 = 1,
     .mac_address_0 = 0x00,
-    .mac_address_1 = 0x80,
-    .mac_address_2 = 0xE1,
+    .mac_address_1 = 0x05,
+    .mac_address_2 = 0x4F,
     .mac_address_3 = 0x01,
     .mac_address_4 = 0x02,
     .mac_address_5 = 0x03,
@@ -52,6 +52,17 @@ io_status_t settings_load();
 void settings_restore(uint8_t restore_flag)
 {
     settings = defaults;
+    // set MAC address with STM32 UID
+    // read the unique ID of the STM32F7xx MCU
+    uint32_t uid_0 = HAL_GetUIDw0();
+    uint32_t uid_1 = HAL_GetUIDw1();
+    settings.mac_address_0 = (uid_0 >> 24) & 0xFF;
+    settings.mac_address_1 = (uid_0 >> 16) & 0xFF;
+    settings.mac_address_2 = (uid_0 >> 8) & 0xFF;
+    settings.mac_address_3 = (uid_1 >> 24) & 0xFF;
+    settings.mac_address_4 = (uid_1 >> 16) & 0xFF;
+    settings.mac_address_5 = (uid_1 >> 8) & 0xFF;
+
     settings_save();
 }
 
