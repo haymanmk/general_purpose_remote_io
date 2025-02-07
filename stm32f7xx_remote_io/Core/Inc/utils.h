@@ -7,7 +7,7 @@
 /* Macros */
 #define UTILS_INCREMENT_BUFFER_HEAD(HEAD, TAIL, SIZE) \
     do { \
-        /* overwrite old data all the way */ \
+        /* overwrite old data */ \
         HEAD = (HEAD+1) % SIZE; \
         return STATUS_OK; \
     } while (0)
