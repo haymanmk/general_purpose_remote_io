@@ -680,8 +680,10 @@ void api_execute_command()
                 }
                 // send the message to the serial port
                 uart_printf((uart_index_t)(commandLine.variant), (uint8_t*)token->any, length);
-                //clear param buffer
+                // clear param buffer
                 memset(anyTypeBuffer, '\0', sizeof(anyTypeBuffer));
+                // reply with default response
+                API_DEFAULT_RESPONSE();
             }
         }
         else
@@ -954,11 +956,17 @@ void api_execute_command()
             uint8_t b = (uint8_t)token->i32;
 
             // set the color of the LED
-            ws28xx_pwm_set_color(r, g, b, led_index);
-            // update the LED
-            ws28xx_pwm_update();
+            if (ws28xx_pwm_set_color(r, g, b, led_index) != HAL_OK)
+            {
+                error_code = API_ERROR_CODE_SET_LED_COLOR_FAILED;
+            }
 
-            API_DEFAULT_RESPONSE();
+            // update the LED
+            if (ws28xx_pwm_update() != HAL_OK)
+            {
+                error_code = API_ERROR_CODE_UPDATE_LED_FAILED;
+            }
+            else API_DEFAULT_RESPONSE();
         }
         else if (commandLine.type == 'R')
         {

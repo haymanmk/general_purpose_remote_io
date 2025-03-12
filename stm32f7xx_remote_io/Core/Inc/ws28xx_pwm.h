@@ -29,7 +29,7 @@
  *       Each bit is represented by a period of PWM signal, which means there are total 24 periods for a LED.
  *       As far as we know, each bit, 0 or 1, is represented by varying the duty cycle of the PWM signal.
  *       If the timer used for PWM signal generation is 16-bit, it will need a 16-bit data to carry the value of the duty cycle in a PWM period.
- *       So, the total memory required for a LED is 24 * 16 = 384 bits = 24 bytes.
+ *       So, the total memory required for a LED is 24 * 16 = 384 bits = 48 bytes.
  *       The required memory and the available memory on the device should be considered to determine the value of this macro.
  */
 #define NUMBER_OF_LEDS_UPDATED_PER_ISR 5
@@ -77,7 +77,7 @@ void ws28xx_pwm_init(TIM_HandleTypeDef *_htim, uint32_t _tim_channel);
 HAL_StatusTypeDef ws28xx_pwm_set_color(uint8_t r, uint8_t g, uint8_t b, uint16_t led);
 void ws28xx_pwm_set_color_all(uint8_t r, uint8_t g, uint8_t b);
 void ws28xx_pwm_set_color_all_off(void);
-void ws28xx_pwm_update(void);
+HAL_StatusTypeDef ws28xx_pwm_update(void);
 void ws28xx_pwm_dma_half_complete_callback(void);
 void ws28xx_pwm_dma_complete_callback(void);
 
