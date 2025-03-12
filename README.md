@@ -82,12 +82,13 @@ At the `Type` column, the symbols
 | 102   | Ethernet port                         | Configure ethernet listening port.                           | `R102`: read port setting.<br />The return would be `R102 8500` when current listening port is `8500`.<br />`W102 8501`: set port as `8501`. | R/W/A/F |
 | 103   | Netmask                               | Configure Netmask.                                           | Refer to IP setting.                                         | R/W/A/F |
 | 104   | Gateway                               | Configure Gateway.                                           | Refer to IP setting.                                         | R/W/A/F |
-| 105.x | Baud rate                             | Configure the serial port baud rate for channel `x`.         | Refer to Ethernet port setting.                              | R/W/A/F |
-| 106.x | Data bits                             | Configure the serial port data bits for channel `x`.         | Refer to Ethernet port setting.                              | R/W/A/F |
-| 107.x | Parity                                | Configure the serial port parity for channel `x`.            | Refer to Ethernet port setting.                              | R/W/A/F |
-| 108.x | Stop bits                             | Configure the serial stop bits for channel `x`.              | Refer to Ethernet port setting.                              | R/W/A/F |
-| 109.x | Flow control<br />(under development) | Configure the serial flow control for channel `x`.           | `R109`: read flow control setting.<br />The return would be either `R109 0` means without flow control or `R109 1` means with flow control.<br />`W109 1`: enable flow control, and vice versa. | R/W/A/F |
-| 110.x | Number of LEDs                        | Configure the number of LEDs embedded at the strip connected to channel `x`. | Refer to Ethernet port setting.                              | R/W/A/F |
+| 105   | MAC Address                           | Configure MAC Address                                        | `R105`: read MAC address.<br />The return could be `R105 0 42 0 52 51 81` which represents the 6 1-byte numbers in decimal.<br />`W105 12 34 56 78 90 91` sets the MAC address with `12:34:56:78:90:91`. | R/W/A/F |
+| 106.x | Baud rate                             | Configure the serial port baud rate for channel `x`.         | Refer to Ethernet port setting.                              | R/W/A/F |
+| 107.x | Data bits                             | Configure the serial port data bits for channel `x`.         | Refer to Ethernet port setting.                              | R/W/A/F |
+| 108.x | Parity                                | Configure the serial port parity for channel `x`.            | Refer to Ethernet port setting.                              | R/W/A/F |
+| 109.x | Stop bits                             | Configure the serial stop bits for channel `x`.              | Refer to Ethernet port setting.                              | R/W/A/F |
+| 110.x | Flow control<br />(under development) | Configure the serial flow control for channel `x`.           | `R109`: read flow control setting.<br />The return would be either `R109 0` means without flow control or `R109 1` means with flow control.<br />`W109 1`: enable flow control, and vice versa. | R/W/A/F |
+| 111.x | Number of LEDs                        | Configure the number of LEDs embedded at the strip connected to channel `x`. | Refer to Ethernet port setting.                              | R/W/A/F |
 
 > Note:
 >
