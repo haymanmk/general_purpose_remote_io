@@ -19,7 +19,7 @@ volatile uint16_t count_isr_for_reset = 0;
 
 /* Function Prototype */
 HAL_StatusTypeDef __ws28xx_pwm_dma_stop(void);
-void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length);
+HAL_StatusTypeDef __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length);
 void __ws28xx_pwm_reset(void);
 
 void ws28xx_pwm_init(TIM_HandleTypeDef *_htim, uint32_t _tim_channel)
@@ -99,7 +99,7 @@ HAL_StatusTypeDef ws28xx_pwm_update(void)
     flag_operation |= FLAG_OPERATION_UPDATING;
 
     // update the buffer for the PWM data
-    __ws28xx_pwm_update_buffer(0, 2 * NUMBER_OF_LEDS_UPDATED_PER_ISR);
+    (void)__ws28xx_pwm_update_buffer(0, 2 * NUMBER_OF_LEDS_UPDATED_PER_ISR);
 
     // start the DMA transfer
     if (HAL_TIM_PWM_Start_DMA(htim, tim_channel, ws28xx_pwm_buffer, WS28XX_PWM_BUFFER_SIZE) != HAL_OK)
@@ -261,13 +261,13 @@ HAL_StatusTypeDef __ws28xx_pwm_dma_stop(void)
 }
 
 /** */
-void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
+HAL_StatusTypeDef __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
 {
     // assert led index is valid
-    ASSERT(led < NUMBER_OF_LEDS);
+    if (led >= NUMBER_OF_LEDS) return HAL_ERROR;
 
     // assert length is valid
-    ASSERT(length <= NUMBER_OF_LEDS);
+    if (length > NUMBER_OF_LEDS) return HAL_ERROR;
 
     uint16_t end_index = led + length;
     uint16_t len_data = 8 * NUMBER_OF_BASIC_COLORS;
@@ -296,6 +296,8 @@ void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
             ws28xx_pwm_buffer[start_index + j + 16] = (color.b & (1 << (7 - j))) ? DUTY_CYCLE_HIGH_BIT : DUTY_CYCLE_LOW_BIT;
         }
     }
+
+    return HAL_OK;
 }
 
 void __ws28xx_pwm_reset(void)
