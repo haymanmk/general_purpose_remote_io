@@ -18,7 +18,7 @@ static uint8_t MACAddr[6] = {0x00, 0x80, 0xE1, 0x01, 0x02, 0x03};
  * failed.
  */
 // static uint8_t IPAddr[4] = {172, 16, 0, 10};
-static uint8_t NetMask[4] = {255, 240, 0, 0};
+// static uint8_t NetMask[4] = {255, 240, 0, 0};
 // static uint8_t GatewayAddr[4] = {172, 16, 0, 1};
 static uint8_t DNSAddr[4] = {8, 8, 8, 8};
 
@@ -28,7 +28,7 @@ static uint8_t DNSAddr[4] = {8, 8, 8, 8};
 /* Listening Port */
 #define LISTENING_PORT 8500
 
-BaseType_t tcp_server_init();
+void tcp_server_init();
 void vStartSimpleTCPServerTasks(uint16_t usStackSize, UBaseType_t uxPriority);
 
 #endif // __ETHERNET_IF_H__

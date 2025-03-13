@@ -7,13 +7,9 @@
 /* Macros */
 #define UTILS_INCREMENT_BUFFER_HEAD(HEAD, TAIL, SIZE) \
     do { \
-        /* check if buffer head is allowed to increment */ \
-        uint8_t nextHead = (HEAD+1) % SIZE; \
-        if (nextHead != TAIL) { \
-            HEAD = nextHead; \
-            return STATUS_OK; \
-        } \
-        return STATUS_FAIL; \
+        /* overwrite old data */ \
+        HEAD = (HEAD+1) % SIZE; \
+        return STATUS_OK; \
     } while (0)
 
 #define UTILS_INCREMENT_BUFFER_TAIL(TAIL, HEAD, SIZE) \

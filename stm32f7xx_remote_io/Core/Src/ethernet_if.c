@@ -6,6 +6,7 @@
 
 extern NetworkInterface_t *pxSTM32Fxx_FillInterfaceDescriptor(BaseType_t xEMACIndex,
                                                               NetworkInterface_t *pxInterface);
+void ethernetif_task(void *pvParameters);
 static void prvCreateTCPServerSocketTasks(void *pvParameters);
 static void prvProcessRxTask(void *pvParameters);
 static void prvProcessTxTask(void *pvParameters);
@@ -22,7 +23,13 @@ static SemaphoreHandle_t connectionCreatedSemaphoreHandle;
 SemaphoreHandle_t deleteTaskSemaphoreHandle;
 static uint16_t listeningPort = 0;
 
-BaseType_t tcp_server_init()
+void tcp_server_init()
+{
+    // create an one-time task to create the TCP server socket
+    xTaskCreate(ethernetif_task, "EthernetIF", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+}
+
+void ethernetif_task(void *pvParameters)
 {
     /* Initialize Semaphore handler to protect the critical section of
        safely shutting down connection */
@@ -37,11 +44,22 @@ BaseType_t tcp_server_init()
         settings.ip_address_2,
         settings.ip_address_3};
     uint8_t GatewayAddr[4] = {
-        settings.ip_address_0,
-        settings.ip_address_1,
-        settings.ip_address_2,
-        1};
+        settings.gateway_0,
+        settings.gateway_1,
+        settings.gateway_2,
+        settings.gateway_3};
+    uint8_t NetMask[4] = {
+        settings.netmask_0,
+        settings.netmask_1,
+        settings.netmask_2,
+        settings.netmask_3};
     listeningPort = LISTENING_PORT + settings.tcp_port;
+    MACAddr[0] = settings.mac_address_0;
+    MACAddr[1] = settings.mac_address_1;
+    MACAddr[2] = settings.mac_address_2;
+    MACAddr[3] = settings.mac_address_3;
+    MACAddr[4] = settings.mac_address_4;
+    MACAddr[5] = settings.mac_address_5;
 
     // check if USER Button is continuously pressed over 5 seconds,
     // then use the default IP address and port
@@ -64,6 +82,11 @@ BaseType_t tcp_server_init()
             GatewayAddr[2] = 0;
             GatewayAddr[3] = 1;
 
+            NetMask[0] = 255;
+            NetMask[1] = 240;
+            NetMask[2] = 0;
+            NetMask[3] = 0;
+
             listeningPort = LISTENING_PORT;
 
             // start the LED blinking task
@@ -85,7 +108,8 @@ BaseType_t tcp_server_init()
        below.  The hook function is called when the network connects. */
     FreeRTOS_IPInit_Multi();
 
-    return SUCCESS;
+    // kill the task
+    vTaskDelete(NULL);
 }
 
 /**
@@ -470,7 +494,7 @@ static void prvProcessRxTask(void *pvParameters)
 static void prvProcessTxTask(void *pvParameters)
 {
     Socket_t xSocket = (Socket_t)pvParameters;
-    char str[105] = {'\0'};
+    char str[API_TX_BUFFER_SIZE] = {'\0'};
     uint8_t strIndex = 0;
 
     for (;;)
@@ -490,27 +514,25 @@ static void prvProcessTxTask(void *pvParameters)
 
         if (++strIndex >= sizeof(str))
         {
-            FreeRTOS_debug_printf(("Buffer overflow\n"));
+            FreeRTOS_debug_printf(("Buffer overflow\r\n"));
             strIndex = 0;
         }
 
         // Check if the character is a newline character
-        if (chr != '\n')
-        {
+        if ((chr != '\r') && (chr != '\n'))
             continue;
-        }
-
+        
         // Send the data
         BaseType_t bytesSent = FreeRTOS_send(xSocket, str, strIndex, 0);
 
         // Check if the data was sent successfully
         if (bytesSent > 0)
         {
-            FreeRTOS_debug_printf(("Data sent: %s\n", str));
+            FreeRTOS_debug_printf(("Data sent: %s\r\n", str));
         }
         else if (bytesSent < 0)
         {
-            FreeRTOS_debug_printf(("Failed to send data\n"));
+            FreeRTOS_debug_printf(("Failed to send data\r\n"));
             break;
         }
 

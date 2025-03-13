@@ -1,25 +1,25 @@
-#include "ws28xx_pwm.h"
+#include "stm32f7xx_remote_io.h"
 
 // buffer for the PWM data
 static uint32_t ws28xx_pwm_buffer[WS28XX_PWM_BUFFER_SIZE] = {0};
 
 // color data for each LED
-static ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS] = {0};
+ws_color_t ws28xx_pwm_color[NUMBER_OF_LEDS] = {0};
 
 static TIM_HandleTypeDef *htim;
 static uint32_t tim_channel;
 volatile uint16_t num_led_buffer_updated = 0; // number of LED whose PWM buffer has been updated
 volatile uint16_t flag_operation = 0;         // flag for the operation of the LED strip
 
-// number of ISR for the reset signal to be sent
+// minimum number of ISRs should be issued for the reset signal
 uint16_t num_isr_for_reset = 0;
 
-// count of ISR for the reset signal has been entered to determine if the DMA transfer should be stopped
+// counting how many ISRs have been executed for the reset signal
 volatile uint16_t count_isr_for_reset = 0;
 
 /* Function Prototype */
-void __ws28xx_pwm_dma_stop(void);
-void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length);
+HAL_StatusTypeDef __ws28xx_pwm_dma_stop(void);
+HAL_StatusTypeDef __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length);
 void __ws28xx_pwm_reset(void);
 
 void ws28xx_pwm_init(TIM_HandleTypeDef *_htim, uint32_t _tim_channel)
@@ -48,8 +48,12 @@ void ws28xx_pwm_init(TIM_HandleTypeDef *_htim, uint32_t _tim_channel)
     // clear the flag for the operation of the LED strip
     flag_operation = 0;
 
-    // calculate the number of ISR for the reset signal to be sent
+    // calculate the minimum number of ISRs should be issued for the reset signal
     num_isr_for_reset = 1 + (NUM_PWM_CYCLES_RESET / (WS28XX_PWM_BUFFER_SIZE / 2)) + (NUM_PWM_CYCLES_RESET % (WS28XX_PWM_BUFFER_SIZE / 2) > 0);
+
+    // in case LEDs are affected by the noise once the system is powered on,
+    // the update signal is sent to the LED strip to reset the color of the LEDs.
+    ws28xx_pwm_update();
 }
 
 HAL_StatusTypeDef ws28xx_pwm_set_color(uint8_t r, uint8_t g, uint8_t b, uint16_t led)
@@ -81,36 +85,56 @@ void ws28xx_pwm_set_color_all_off(void)
     ws28xx_pwm_set_color_all(0, 0, 0);
 }
 
-void ws28xx_pwm_update(void)
+HAL_StatusTypeDef ws28xx_pwm_update(void)
 {
     // check if the DMA transfer is ongoing
     if (flag_operation & FLAG_OPERATION_UPDATING)
     {
-        return;
+        return HAL_BUSY;
     }
 
+    // set the flag for the operation of the LED strip
+    // Note: this flag is set first to avoid the
+    //       multiple calls of this function.
+    flag_operation |= FLAG_OPERATION_UPDATING;
+
     // update the buffer for the PWM data
-    __ws28xx_pwm_update_buffer(0, 2 * NUMBER_OF_LEDS_UPDATED_PER_ISR);
+    (void)__ws28xx_pwm_update_buffer(0, 2 * NUMBER_OF_LEDS_UPDATED_PER_ISR);
+
+    // start the DMA transfer
+    if (HAL_TIM_PWM_Start_DMA(htim, tim_channel, ws28xx_pwm_buffer, WS28XX_PWM_BUFFER_SIZE) != HAL_OK)
+    {
+        // clear the flag for the operation of the LED strip
+        flag_operation &= ~FLAG_OPERATION_UPDATING;
+
+        return HAL_ERROR;
+    }
 
     // increment the number of LED buffer updated
     num_led_buffer_updated += 2 * NUMBER_OF_LEDS_UPDATED_PER_ISR;
 
-    // start the DMA transfer
-    HAL_TIM_PWM_Start_DMA(htim, tim_channel, (uint32_t *)ws28xx_pwm_buffer, WS28XX_PWM_BUFFER_SIZE);
-
-    // set the flag for the operation of the LED strip
-    flag_operation |= FLAG_OPERATION_UPDATING;
+    return HAL_OK;
 }
 
 void ws28xx_pwm_dma_half_complete_callback(void)
 {
     uint16_t _flag_operation = flag_operation;
 
+    // atomic operation
+    __disable_irq();
+        
     // check if DMA transfer should be stopped
     if (_flag_operation & FLAG_OPERATION_DMA_STOP)
     {
         // stop the DMA transfer
-        __ws28xx_pwm_dma_stop();
+        if (__ws28xx_pwm_dma_stop() != HAL_OK)
+        {
+            // error handling
+            // enable the interrupt
+            __enable_irq();
+
+            return;
+        };
 
         // clear the flag for the operation of the LED strip
         flag_operation &= ~(FLAG_OPERATION_UPDATING | FLAG_OPERATION_DMA_STOP | FLAG_OPERATION_RESET_SIGNAL);
@@ -120,12 +144,9 @@ void ws28xx_pwm_dma_half_complete_callback(void)
 
         // clear the number of LED buffer updated
         num_led_buffer_updated = 0;
-
-        return;
     }
-
     // check if the reset signal should be sent
-    if (_flag_operation & FLAG_OPERATION_RESET_SIGNAL)
+    else if (_flag_operation & FLAG_OPERATION_RESET_SIGNAL)
     {
         // reset the buffer for the PWM data
         __ws28xx_pwm_reset();
@@ -138,33 +159,47 @@ void ws28xx_pwm_dma_half_complete_callback(void)
             // set the flag for the operation of the LED strip
             flag_operation |= FLAG_OPERATION_DMA_STOP;
         }
-
-        return;
     }
-
-    // update the buffer for the PWM data
-    __ws28xx_pwm_update_buffer(num_led_buffer_updated, NUMBER_OF_LEDS_UPDATED_PER_ISR);
-
-    // increment the number of LED buffer updated
-    num_led_buffer_updated += NUMBER_OF_LEDS_UPDATED_PER_ISR;
-
-    // check if all the LED buffers have been updated
-    if (num_led_buffer_updated >= NUMBER_OF_LEDS)
+    else
     {
-        // set the flag for the operation of the LED strip
-        flag_operation |= FLAG_OPERATION_RESET_SIGNAL;
+
+        // update the buffer for the PWM data
+        __ws28xx_pwm_update_buffer(num_led_buffer_updated, NUMBER_OF_LEDS_UPDATED_PER_ISR);
+
+        // increment the number of LED buffer updated
+        num_led_buffer_updated += NUMBER_OF_LEDS_UPDATED_PER_ISR;
+
+        // check if all the LED buffers have been updated
+        if (num_led_buffer_updated >= NUMBER_OF_LEDS)
+        {
+            // set the flag for the operation of the LED strip
+            flag_operation |= FLAG_OPERATION_RESET_SIGNAL;
+        }
     }
+
+    // enable the interrupt
+    __enable_irq();
 }
 
 void ws28xx_pwm_dma_complete_callback(void)
 {
     uint16_t _flag_operation = flag_operation;
 
+    // atomic operation
+    __disable_irq();
+        
     // check if DMA transfer should be stopped
     if (_flag_operation & FLAG_OPERATION_DMA_STOP)
     {
         // stop the DMA transfer
-        __ws28xx_pwm_dma_stop();
+        if (__ws28xx_pwm_dma_stop() != HAL_OK)
+        {
+            // error handling
+            // enable the interrupt
+            __enable_irq();
+
+            return;
+        };
 
         // clear the flag for the operation of the LED strip
         flag_operation &= ~(FLAG_OPERATION_UPDATING | FLAG_OPERATION_DMA_STOP | FLAG_OPERATION_RESET_SIGNAL);
@@ -174,12 +209,9 @@ void ws28xx_pwm_dma_complete_callback(void)
 
         // clear the number of LED buffer updated
         num_led_buffer_updated = 0;
-
-        return;
     }
-
     // check if the reset signal should be sent
-    if (_flag_operation & FLAG_OPERATION_RESET_SIGNAL)
+    else if (_flag_operation & FLAG_OPERATION_RESET_SIGNAL)
     {
         // reset the buffer for the PWM data
         __ws28xx_pwm_reset();
@@ -192,39 +224,50 @@ void ws28xx_pwm_dma_complete_callback(void)
             // set the flag for the operation of the LED strip
             flag_operation |= FLAG_OPERATION_DMA_STOP;
         }
-
-        return;
     }
-
-
-    // update the buffer for the PWM data
-    __ws28xx_pwm_update_buffer(num_led_buffer_updated, NUMBER_OF_LEDS_UPDATED_PER_ISR);
-
-    // increment the number of LED buffer updated
-    num_led_buffer_updated += NUMBER_OF_LEDS_UPDATED_PER_ISR;
-
-    // check if all the LED buffers have been updated
-    if (num_led_buffer_updated >= NUMBER_OF_LEDS)
+    else
     {
-        // set the flag for the operation of the LED strip
-        flag_operation |= FLAG_OPERATION_RESET_SIGNAL;
+        // update the buffer for the PWM data
+        __ws28xx_pwm_update_buffer(num_led_buffer_updated, NUMBER_OF_LEDS_UPDATED_PER_ISR);
+
+        // increment the number of LED buffer updated
+        num_led_buffer_updated += NUMBER_OF_LEDS_UPDATED_PER_ISR;
+
+        // check if all the LED buffers have been updated
+        if (num_led_buffer_updated >= NUMBER_OF_LEDS)
+        {
+            // set the flag for the operation of the LED strip
+            flag_operation |= FLAG_OPERATION_RESET_SIGNAL;
+        }
     }
+
+    // enable the interrupt
+    __enable_irq();
 }
 
-void __ws28xx_pwm_dma_stop(void)
+HAL_StatusTypeDef __ws28xx_pwm_dma_stop(void)
 {
-    // stop the DMA transfer
-    HAL_TIM_PWM_Stop_DMA(htim, tim_channel);
+    HAL_StatusTypeDef status = HAL_OK;
+    if (htim)
+    {
+        // stop the DMA transfer
+        if (HAL_TIM_PWM_Stop_DMA(htim, tim_channel) != HAL_OK)
+        {
+            status = HAL_ERROR;
+        }
+    }
+
+    return status;
 }
 
 /** */
-void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
+HAL_StatusTypeDef __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
 {
     // assert led index is valid
-    ASSERT(led < NUMBER_OF_LEDS);
+    if (led >= NUMBER_OF_LEDS) return HAL_ERROR;
 
     // assert length is valid
-    ASSERT(length <= NUMBER_OF_LEDS);
+    if (length > NUMBER_OF_LEDS) return HAL_ERROR;
 
     uint16_t end_index = led + length;
     uint16_t len_data = 8 * NUMBER_OF_BASIC_COLORS;
@@ -236,7 +279,7 @@ void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
         ws_color_t color = ws28xx_pwm_color[i];
 
         // calculate the start index for the PWM data
-        uint16_t start_index = i * len_data % WS28XX_PWM_BUFFER_SIZE;
+        uint16_t start_index = (i * len_data) % WS28XX_PWM_BUFFER_SIZE;
 
         // set the PWM data for each bit of RGB color code
         // NOTE: the PWM data is set in the order of GRB,
@@ -253,15 +296,27 @@ void __ws28xx_pwm_update_buffer(uint16_t led, uint16_t length)
             ws28xx_pwm_buffer[start_index + j + 16] = (color.b & (1 << (7 - j))) ? DUTY_CYCLE_HIGH_BIT : DUTY_CYCLE_LOW_BIT;
         }
     }
+
+    return HAL_OK;
 }
 
 void __ws28xx_pwm_reset(void)
 {
     uint16_t len_data = 8 * NUMBER_OF_BASIC_COLORS * NUMBER_OF_LEDS_UPDATED_PER_ISR;
-    uint16_t start_index = count_isr_for_reset * len_data % WS28XX_PWM_BUFFER_SIZE;
+    uint16_t start_index = ((num_led_buffer_updated + count_isr_for_reset) * len_data) % WS28XX_PWM_BUFFER_SIZE;
     // set the PWM data for the reset signal
     for (uint16_t i = 0; i < len_data; i++)
     {
         ws28xx_pwm_buffer[start_index+ i] =  0;
     }
+}
+
+void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim)
+{
+  ws28xx_pwm_dma_half_complete_callback();
+}
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+  ws28xx_pwm_dma_complete_callback();
 }
