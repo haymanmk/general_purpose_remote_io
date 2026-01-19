@@ -11,5 +11,12 @@
     "__config": "c",
     "variant": "c",
     "ws28xx_pwm.h": "c"
-  }
+  },
+  "ROS2.distro": "jazzy",
+  "python.autoComplete.extraPaths": [
+    "/opt/ros/jazzy/lib/python3.12/site-packages"
+  ],
+  "python.analysis.extraPaths": [
+    "/opt/ros/jazzy/lib/python3.12/site-packages"
+  ]
 }

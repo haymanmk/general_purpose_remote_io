@@ -42,6 +42,24 @@ void uart_msp_init(uart_index_t uart_index, UART_HandleTypeDef *huart, uart_sett
     huart->Init.WordLength = uart_settings->data_bits;
     huart->Init.StopBits = uart_settings->stop_bits;
     huart->Init.Parity = uart_settings->parity;
+    // Validate if baud rate is correctly set
+    // Here we only allow standard baud rates
+    const uint32_t standard_baud_rates[] = {9600, 19200, 38400, 57600, 115200};
+    uint8_t is_valid_baud_rate = 0;
+    for (uint8_t i = 0; i < sizeof(standard_baud_rates)/sizeof(standard_baud_rates[0]); i++)
+    {
+        if (huart->Init.BaudRate == standard_baud_rates[i])
+        {
+            is_valid_baud_rate = 1;
+            break;
+        }
+    }
+    if (!is_valid_baud_rate)
+    {
+        // fallback to default baud rate
+        huart->Init.BaudRate = 115200;
+    }
+
     if (HAL_UART_Init(huart) != HAL_OK)
     {
         Error_Handler();

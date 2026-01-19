@@ -1184,6 +1184,14 @@ void api_execute_command()
             token_t* token = commandLine.token;
 
             // write the baud rate
+            // Validate baud rate
+            if (token->i32 != 9600 && token->i32 != 19200
+                && token->i32 != 38400 && token->i32 != 57600
+                && token->i32 != 115200)
+            {
+                error_code = API_ERROR_CODE_INVALID_COMMAND_PARAMETER;
+                break;
+            }
             settings.uart[commandLine.variant].baudrate = (uint32_t)(token->i32);
 
             // write the baud rate
